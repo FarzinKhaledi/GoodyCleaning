@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Goodycleaning
+
+Professional cleaning services website with cinematic 3D scroll storytelling, instant Revolut checkout, and admin quote management.
+
+## Features
+
+- **3D scroll-story homepage** — React Three Fiber scenes driven by scroll (particles, house, cleaning tools)
+- **Three services** — Carpet Cleaning, Deep Cleaning, Before & After Tenancy Cleaning
+- **Instant booking** — Studio / 1-bed / 2-bed jobs checkout via Revolut (Apple Pay, Google Pay, cards)
+- **Admin quotes** — 3+ bed and commercial jobs routed to admin dashboard
+- **Confirmation emails** — Automated via Resend on payment completion
+- **Admin dashboard** — Review requests, set prices, send quote emails with pay links
+
+## Tech Stack
+
+- Next.js 16 (App Router) + TypeScript
+- React Three Fiber + drei + GSAP + Lenis
+- Tailwind CSS + shadcn-style UI components
+- Postgres (Neon) + Drizzle ORM
+- Auth.js (Credentials) for admin
+- Revolut Merchant API for payments
+- Resend + React Email for transactional email
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment
+
+Copy `.env.example` to `.env.local` and fill in values:
+
+```bash
+cp .env.example .env.local
+```
+
+Generate an auth secret:
+
+```bash
+openssl rand -base64 32
+```
+
+### 3. Set up database
+
+Create a Neon Postgres database and set `DATABASE_URL` in `.env.local`, then:
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+Default admin login: `admin@goodycleaning.co.uk` / `admin123`
+
+### 4. Run development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) for the site and [http://localhost:3000/admin](http://localhost:3000/admin) for the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment (Vercel)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push to GitHub and import into Vercel
+2. Add all environment variables from `.env.example`
+3. Set `NEXT_PUBLIC_SITE_URL` to your production domain
+4. Run `npm run db:push && npm run db:seed` against your production database
+5. Configure Revolut webhook URL: `https://yourdomain.com/api/webhooks/revolut`
 
-## Learn More
+### Revolut Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. Create a Revolut Business Merchant account
+2. Generate sandbox API keys for testing
+3. Set `REVOLUT_API_KEY`, `REVOLUT_API_URL`, and `REVOLUT_WEBHOOK_SECRET`
+4. Switch to production API URL when going live
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Resend Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Create a Resend account and verify your domain
+2. Set `RESEND_API_KEY` and `MAIL_FROM` to your verified sender
 
-## Deploy on Vercel
+## Pricing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Edit placeholder prices in `src/lib/pricing.ts`. Contact info is in `src/lib/config.ts`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── (site)/page.tsx          # Homepage
+│   ├── admin/                   # Admin dashboard
+│   ├── api/                     # API routes
+│   └── booking/success/         # Payment confirmation
+├── components/
+│   ├── sections/                # Hero, Services, Booking, etc.
+│   ├── three/                   # 3D scroll scenes
+│   └── ui/                      # UI components
+└── lib/
+    ├── db/                      # Drizzle schema
+    ├── mail/                    # Email templates
+    ├── pricing.ts               # Price table
+    └── revolut.ts               # Payment integration
+```
+# GoodyCleaning
