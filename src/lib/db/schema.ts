@@ -1,0 +1,67 @@
+import {
+  pgTable,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  pgEnum,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+export const quoteStatusEnum = pgEnum("quote_status", [
+  "pending",
+  "quoted",
+  "paid",
+  "cancelled",
+]);
+
+export const quotes = pgTable("quotes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  serviceType: text("service_type").notNull(),
+  propertySize: text("property_size").notNull(),
+  preferredDate: timestamp("preferred_date"),
+  message: text("message"),
+  status: quoteStatusEnum("status").default("pending").notNull(),
+  priceCents: integer("price_cents"),
+  revolutOrderId: text("revolut_order_id"),
+  checkoutUrl: text("checkout_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const bookings = pgTable("bookings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  quoteId: uuid("quote_id")
+    .references(() => quotes.id)
+    .notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  paidAt: timestamp("paid_at"),
+  revolutOrderId: text("revolut_order_id").notNull(),
+  confirmationSentAt: timestamp("confirmation_sent_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const admins = pgTable("admins", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const testimonials = pgTable("testimonials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  rating: integer("rating").notNull(),
+  message: text("message").notNull(),
+  published: boolean("published").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Quote = typeof quotes.$inferSelect;
+export type NewQuote = typeof quotes.$inferInsert;
+export type Booking = typeof bookings.$inferSelect;
+export type Admin = typeof admins.$inferSelect;
+export type Testimonial = typeof testimonials.$inferSelect;
