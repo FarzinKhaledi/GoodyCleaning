@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enquirySchema } from "@/lib/validations";
 import { EnquiryDeliveryError, sendEnquiryEmail } from "@/lib/mail/enquiry";
+import { enquiryStore } from "@/lib/quotes/enquiries";
 
 export const runtime = "nodejs";
 
@@ -91,8 +92,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const delivery = await sendEnquiryEmail(parsed.data);
-    return NextResponse.json({ success: true, acknowledgementSent: delivery.acknowledgementSent });
+    const quote = await enquiryStore.create(parsed.data);
+    try {
+      const delivery = await sendEnquiryEmail(parsed.data, { quoteId: quote.id });
+      return NextResponse.json({ success: true, acknowledgementSent: delivery.acknowledgementSent });
+    } catch {
+      // The team can review the durable enquiry even if email is unavailable.
+      console.warn("[enquiries] Saved enquiry; email notification unavailable.");
+      return NextResponse.json({ success: true, acknowledgementSent: false });
+    }
   } catch (error) {
     return NextResponse.json({
       error: "We couldn’t send your enquiry. Please try again in a moment or call 0800 001 6171.",

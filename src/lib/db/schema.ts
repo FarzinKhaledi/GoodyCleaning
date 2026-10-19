@@ -6,7 +6,9 @@ import {
   boolean,
   pgEnum,
   uuid,
+  jsonb,
 } from "drizzle-orm/pg-core";
+import type { QuoteLineItem } from "@/lib/quotes/pricing";
 
 export const quoteStatusEnum = pgEnum("quote_status", [
   "pending",
@@ -22,12 +24,20 @@ export const quotes = pgTable("quotes", {
   phone: text("phone").notNull(),
   serviceType: text("service_type").notNull(),
   propertySize: text("property_size").notNull(),
+  postcode: text("postcode"),
   preferredDate: timestamp("preferred_date"),
   message: text("message"),
   status: quoteStatusEnum("status").default("pending").notNull(),
   priceCents: integer("price_cents"),
   revolutOrderId: text("revolut_order_id"),
   checkoutUrl: text("checkout_url"),
+  lineItems: jsonb("line_items").$type<QuoteLineItem[]>().default([]).notNull(),
+  discountCents: integer("discount_cents").default(0).notNull(),
+  customerNotes: text("customer_notes"),
+  internalNotes: text("internal_notes"),
+  version: integer("version").default(0).notNull(),
+  quoteEmailSentAt: timestamp("quote_email_sent_at"),
+  sendStartedAt: timestamp("send_started_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -41,6 +51,8 @@ export const bookings = pgTable("bookings", {
   paidAt: timestamp("paid_at"),
   revolutOrderId: text("revolut_order_id").notNull(),
   confirmationSentAt: timestamp("confirmation_sent_at"),
+  customerConfirmationSentAt: timestamp("customer_confirmation_sent_at"),
+  adminNotificationSentAt: timestamp("admin_notification_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

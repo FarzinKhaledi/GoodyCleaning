@@ -8,13 +8,13 @@ export interface EnquiryEmailContent {
   text: string;
 }
 
-interface SummaryRow {
+export interface SummaryRow {
   label: string;
   value: string;
   href?: string;
 }
 
-const colours = {
+export const colours = {
   offwhite: "#f7f8f4",
   navy: "#102c43",
   blue: "#2457e8",
@@ -22,12 +22,12 @@ const colours = {
   muted: "#687781",
   border: "#e3e8e6",
 };
-const font = "Arial, Helvetica, sans-serif";
-const supportEmail = siteConfig.contact.email;
-const supportPhone = siteConfig.contact.phone;
+export const font = "Arial, Helvetica, sans-serif";
+export const supportEmail = siteConfig.contact.email;
+export const supportPhone = siteConfig.contact.phone;
 const supportPhoneHref = `tel:${supportPhone.replace(/\s/g, "")}`;
 
-function escapeHtml(value: string) {
+export function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
@@ -37,15 +37,15 @@ function escapeHtml(value: string) {
   })[character]!);
 }
 
-function escapeMultiline(value: string) {
+export function escapeMultiline(value: string) {
   return escapeHtml(value.replace(/\r\n?/g, "\n")).replace(/\n/g, "<br />");
 }
 
-function singleLine(value: string) {
+export function singleLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function preferredDate(value?: string) {
+export function preferredDate(value?: string) {
   if (!value) return undefined;
   const date = new Date(`${value}T12:00:00Z`);
   if (!Number.isFinite(date.getTime())) return singleLine(value);
@@ -62,7 +62,7 @@ function mailto(address: string, subject: string) {
   return `mailto:${recipient}?subject=${encodeURIComponent(subject)}`;
 }
 
-function summaryTable(rows: SummaryRow[]) {
+export function summaryTable(rows: SummaryRow[]) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;">
     ${rows.map(({ label, value, href }, index) => {
       const border = index ? `border-top:1px solid ${colours.border};` : "";
@@ -75,7 +75,7 @@ function summaryTable(rows: SummaryRow[]) {
   </table>`;
 }
 
-function button(label: string, href: string) {
+export function button(label: string, href: string) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
     <tr><td align="center" bgcolor="${colours.blue}" style="background-color:${colours.blue};border-radius:28px;mso-padding-alt:15px 25px;">
       <a href="${escapeHtml(href)}" style="display:inline-block;padding:15px 25px;border:1px solid ${colours.blue};border-radius:28px;font-family:${font};font-size:14px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;text-align:center;mso-padding-alt:0;">${escapeHtml(label)}&nbsp; &#8599;</a>
@@ -83,7 +83,7 @@ function button(label: string, href: string) {
   </table>`;
 }
 
-function layout({ preview, eyebrow, heading, content, footer }: {
+export function layout({ preview, eyebrow, heading, content, footer }: {
   preview: string;
   eyebrow: string;
   heading: string;
@@ -128,7 +128,10 @@ function layout({ preview, eyebrow, heading, content, footer }: {
 </html>`;
 }
 
-export function buildAdminEnquiryEmail(enquiry: EnquiryFormData): EnquiryEmailContent {
+export function buildAdminEnquiryEmail(
+  enquiry: EnquiryFormData,
+  options: { quoteId?: string } = {},
+): EnquiryEmailContent {
   const subject = "New GoodyCleaning enquiry";
   const rows: SummaryRow[] = [
     { label: "Name", value: enquiry.name },
@@ -140,6 +143,9 @@ export function buildAdminEnquiryEmail(enquiry: EnquiryFormData): EnquiryEmailCo
     { label: "Preferred date", value: preferredDate(enquiry.preferredDate) || "Not supplied" },
   ];
   const message = enquiry.message || "Not supplied";
+  const reviewUrl = options.quoteId
+    ? `${siteConfig.url}/admin/quotes/${encodeURIComponent(options.quoteId)}`
+    : undefined;
   const html = layout({
     preview: "A new cleaning enquiry is ready for your review.",
     eyebrow: "Ready for your review",
@@ -150,7 +156,7 @@ export function buildAdminEnquiryEmail(enquiry: EnquiryFormData): EnquiryEmailCo
       </table>
       <h2 style="margin:25px 0 10px;font-family:${font};font-size:15px;line-height:22px;font-weight:700;color:${colours.navy};">Additional details</h2>
       <p style="margin:0 0 25px;font-family:${font};font-size:14px;line-height:24px;color:${colours.muted};word-break:break-word;overflow-wrap:anywhere;">${escapeMultiline(message)}</p>
-      ${button("Reply to customer", mailto(enquiry.email, "Your GoodyCleaning enquiry"))}
+      ${reviewUrl ? `${button("Review enquiry & prepare quote", reviewUrl)}<p style="margin:16px 0 0;font-family:${font};font-size:12px;line-height:20px;color:${colours.muted};">Sign in to the admin dashboard to review the enquiry, adjust your quote, and send it to the customer.</p>` : button("Reply to customer", mailto(enquiry.email, "Your GoodyCleaning enquiry"))}
       <p style="margin:18px 0 0;font-family:${font};font-size:12px;line-height:20px;color:${colours.muted};">This is an enquiry, not a confirmed booking. Agree the quote, availability, and cleaning details with the customer.</p>`,
     footer: "GoodyCleaning · Internal enquiry notification",
   });
@@ -163,6 +169,7 @@ export function buildAdminEnquiryEmail(enquiry: EnquiryFormData): EnquiryEmailCo
     "Additional details:",
     message,
     "",
+    ...(reviewUrl ? [`Review enquiry and prepare quote: ${reviewUrl}`, "Sign in to the admin dashboard to review, adjust, and send the quote.", ""] : []),
     "This is an enquiry, not a confirmed booking. Agree the quote, availability, and cleaning details with the customer.",
     "",
     `Reply to customer: ${enquiry.email}`,

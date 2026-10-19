@@ -29,17 +29,17 @@ test("missing production services fail safely without confirming payments or ema
       amountCents: 100,
       description: "Test",
       customerEmail: "test@example.com",
-      quoteId: "test",
+      quoteId: "12345678-1234-1234-1234-123456789012",
     }), /Revolut payments are not configured/);
 
-    const body = '{"event":"ORDER_COMPLETED","order_id":"test-order"}';
+    const body = '{"event":"ORDER_COMPLETED","order_id":"87654321-4321-4321-4321-210987654321"}';
     const timestamp = String(Date.now());
     const signature = crypto.createHmac("sha256", process.env.REVOLUT_WEBHOOK_SECRET)
       .update(`v1.${timestamp}.${body}`).digest("hex");
     const originalConsoleError = console.error;
-    let loggedDatabaseFailure = false;
-    console.error = (_message: unknown, error: unknown) => {
-      loggedDatabaseFailure = error instanceof Error && error.message === "DATABASE_URL is not configured";
+    let loggedSafeFailure = false;
+    console.error = (_message: unknown, reason: unknown) => {
+      loggedSafeFailure = reason === "delivery-or-database";
     };
     try {
       const response = await POST(new Request("http://localhost/api/webhooks/revolut", {
@@ -48,7 +48,7 @@ test("missing production services fail safely without confirming payments or ema
         headers: { "revolut-signature": `v1=${signature}`, "revolut-request-timestamp": timestamp },
       }));
       assert.equal(response.status, 500);
-      assert.equal(loggedDatabaseFailure, true);
+      assert.equal(loggedSafeFailure, true);
     } finally {
       console.error = originalConsoleError;
     }
