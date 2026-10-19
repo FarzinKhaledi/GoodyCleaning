@@ -100,7 +100,7 @@ export function EnquiryBooking() {
       });
       const payload: unknown = await response.json().catch(() => null);
       const result = payload && typeof payload === "object"
-        ? payload as { success?: unknown; error?: unknown; fieldErrors?: unknown }
+        ? payload as { success?: unknown; acknowledgementSent?: unknown; error?: unknown; fieldErrors?: unknown }
         : {};
 
       if (!response.ok || result.success !== true) {
@@ -130,7 +130,9 @@ export function EnquiryBooking() {
 
       setStatus({
         type: "success",
-        message: "Thank you — your enquiry has been sent. Our team will be in touch to discuss your quote and confirm availability and cleaning details.",
+        message: result.acknowledgementSent === false
+          ? "Thank you — your enquiry has been sent to our team. We couldn’t send your acknowledgement email, but you don’t need to submit again. We’ll be in touch to discuss your quote and availability."
+          : "Thank you — your enquiry has been sent. We’ve emailed you an acknowledgement, and our team will review your details and be in touch to discuss your quote and availability.",
       });
       form.reset({
         name: "",

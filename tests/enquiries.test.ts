@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { after, beforeEach, test, type TestContext } from "node:test";
 import { POST } from "../src/app/api/enquiries/route";
 import { enquirySchema } from "../src/lib/validations";
@@ -23,8 +24,8 @@ beforeEach(() => {
     GMAIL_CLIENT_ID: "test-client-id",
     GMAIL_CLIENT_SECRET: "test-client-secret",
     GMAIL_REFRESH_TOKEN: "test-refresh-token",
-    GMAIL_SENDER: "sender@example.com",
-    GMAIL_USER: "fallback@example.com",
+    GMAIL_SENDER: "support@goodyvan.com",
+    GMAIL_USER: "support@goodyvan.com",
   });
 });
 after(() => {
@@ -47,9 +48,10 @@ function request(body: unknown = enquiry, headers: Record<string, string> = {}) 
   });
 }
 
-function provider(t: TestContext, failure?: "token" | "send" | "missing-token" | "missing-id" | "timeout") {
+function provider(t: TestContext, failure?: "token" | "send" | "ack" | "missing-token" | "missing-id" | "timeout") {
   // Every route test replaces fetch before any request; no live provider calls are possible.
   const calls: { url: string; init?: RequestInit }[] = [];
+  let sends = 0;
   t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, init });
@@ -61,10 +63,40 @@ function provider(t: TestContext, failure?: "token" | "send" | "missing-token" |
       return Response.json(failure === "missing-token" ? {} : { access_token: "test-access-token" });
     }
     assert.equal(url, "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
-    if (failure === "send") return Response.json({ error: "jose@example.com test-access-token" }, { status: 500 });
+    sends += 1;
+    if (failure === "send" || (failure === "ack" && sends === 2)) return Response.json({ error: "jose@example.com test-access-token" }, { status: 500 });
     return Response.json(failure === "missing-id" ? {} : { id: "test-delivered-message" });
   });
   return calls;
+}
+
+function decodeMessage(call: { init?: RequestInit }) {
+  const { raw } = JSON.parse(String(call.init?.body));
+  assert.match(raw, /^[\w-]+$/);
+  const mime = Buffer.from(raw, "base64url").toString("utf8");
+  const headers = mime.split("\r\n\r\n")[0];
+  assert.match(headers, /Content-Type: multipart\/related;/);
+  assert.match(mime, /Content-Type: multipart\/alternative;/);
+  const parts = Array.from(mime.matchAll(/Content-Type: (text\/plain|text\/html|image\/png)[^\r\n]*\r\n([\s\S]*?)\r\n\r\n([\s\S]*?)(?=\r\n--)/g));
+  assert.equal(parts.length, 3);
+  for (const part of parts) {
+    assert.match(part[2], /Content-Transfer-Encoding: base64/);
+    assert.ok(part[3].split("\r\n").every((line) => line.length <= 76));
+  }
+  const text = Buffer.from(parts[0][3], "base64").toString("utf8");
+  const html = Buffer.from(parts[1][3], "base64").toString("utf8");
+  const image = Buffer.from(parts[2][3], "base64");
+  assert.match(parts[2][2], /Content-ID: <goodycleaning-logo>/);
+  assert.match(parts[2][2], /Content-Disposition: inline;/);
+  assert.deepEqual(image, readFileSync("src/lib/mail/assets/goodycleaning-logo.png"));
+  assert.match(html, /src=["']cid:goodycleaning-logo["']/);
+  const subject = headers.match(/Subject: ([\s\S]+?)(?=\r\n[A-Za-z-]+:)/)?.[1];
+  assert.ok(subject);
+  assert.match(subject, /^=\?UTF-8\?B\?/);
+  const decodedSubject = Array.from(subject.matchAll(/=\?UTF-8\?B\?([^?]+)\?=/g))
+    .map((word) => Buffer.from(word[1], "base64").toString("utf8")).join("");
+  assert.ok(decodedSubject.length > 0 && !decodedSubject.includes("�"));
+  return { mime, headers, text, html };
 }
 
 test("enquiry schema requires genuine contact fields and bounds optional inputs", () => {
@@ -95,29 +127,32 @@ test("missing or invalid contact data returns field errors without contacting Gm
   assert.equal(calls.length, 0);
 });
 
-test("valid enquiry sends all fields with fixed recipient, safe MIME and customer Reply-To", async (t) => {
+test("valid enquiry sends branded admin and customer messages with safe CID MIME", async (t) => {
   const calls = provider(t);
   const response = await POST(request());
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { success: true });
-  assert.equal(calls.length, 2);
+  assert.deepEqual(await response.json(), { success: true, acknowledgementSent: true });
+  assert.equal(calls.length, 3);
   const refreshBody = new URLSearchParams(String(calls[0].init?.body));
   assert.equal(refreshBody.get("grant_type"), "refresh_token");
   assert.equal(refreshBody.get("refresh_token"), "test-refresh-token");
   assert.equal((calls[1].init?.headers as Record<string, string>).Authorization, "Bearer test-access-token");
 
-  const { raw } = JSON.parse(String(calls[1].init?.body));
-  assert.match(raw, /^[\w-]+$/);
-  const [headers, encodedBody] = Buffer.from(raw, "base64url").toString("utf8").split("\r\n\r\n");
-  assert.match(headers, /From: GoodyCleaning <sender@example.com>/);
-  assert.match(headers, /To: support@goodyvan.com/);
-  assert.match(headers, /Reply-To: jose@example.com/);
-  assert.match(headers, /Subject: =\?UTF-8\?B\?[A-Za-z0-9+/=]+\?=/);
-  assert.match(headers, /Content-Type: text\/plain; charset="UTF-8"/);
-  const body = Buffer.from(encodedBody, "base64").toString("utf8");
-  for (const value of ["José Smith", "jose@example.com", "+44 7700 900123", "Deep Cleaning", "2 Bedrooms", "SW1A 1AA", "2099-01-01", enquiry.message]) {
-    assert.ok(body.includes(value), value);
+  const admin = decodeMessage(calls[1]);
+  const customer = decodeMessage(calls[2]);
+  assert.match(admin.headers, /From: GoodyCleaning <support@goodyvan.com>/);
+  assert.match(admin.headers, /To: support@goodyvan.com/);
+  assert.match(admin.headers, /Reply-To: jose@example.com/);
+  assert.match(admin.headers, /Auto-Submitted: auto-generated/);
+  assert.match(customer.headers, /From: GoodyCleaning <support@goodyvan.com>/);
+  assert.match(customer.headers, /To: jose@example.com/);
+  assert.match(customer.headers, /Reply-To: support@goodyvan.com/);
+  assert.match(customer.headers, /Auto-Submitted: auto-replied/);
+  assert.match(customer.headers, /X-Auto-Response-Suppress: All/);
+  for (const value of ["José Smith", "jose@example.com", "+44 7700 900123", "Deep Cleaning", "2 Bedrooms", "SW1A 1AA", "1 January 2099", enquiry.message]) {
+    assert.ok(admin.text.includes(value), value);
   }
+  assert.ok(!customer.text.includes(enquiry.message));
 });
 
 test("missing or invalid mail configuration fails closed with no stub success", async (t) => {
@@ -127,21 +162,23 @@ test("missing or invalid mail configuration fails closed with no stub success", 
   assert.equal(response.status, 503);
   assert.notEqual((await response.json()).success, true);
   process.env.GMAIL_CLIENT_SECRET = "test-client-secret";
+  process.env.GMAIL_SENDER = "different-valid-sender@example.com";
+  response = await POST(request());
+  assert.equal(response.status, 503);
   process.env.GMAIL_SENDER = "sender@example.com\r\nBcc: attacker@example.com";
   response = await POST(request());
   assert.equal(response.status, 503);
   assert.equal(calls.length, 0);
 });
 
-test("GMAIL_USER is a valid sender fallback and Origin may be absent", async (t) => {
+test("support GMAIL_USER is a valid fallback and Origin may be absent", async (t) => {
   const calls = provider(t);
   delete process.env.GMAIL_SENDER;
   const input = request();
   input.headers.delete("origin");
   const response = await POST(input);
   assert.equal(response.status, 200);
-  const { raw } = JSON.parse(String(calls[1].init?.body));
-  assert.match(Buffer.from(raw, "base64url").toString("utf8"), /From: GoodyCleaning <fallback@example.com>/);
+  assert.match(decodeMessage(calls[1]).headers, /From: GoodyCleaning <support@goodyvan.com>/);
 });
 
 test("Gmail token, send, malformed-response and timeout failures never acknowledge delivery", async (t) => {
@@ -155,7 +192,41 @@ test("Gmail token, send, malformed-response and timeout failures never acknowled
     assert.ok(!body.includes("test-access-token"));
     assert.ok(!body.includes("jose@example.com"));
     assert.ok(calls.length >= 1);
+    assert.ok(calls.length <= 2, "No customer acknowledgement follows a failed admin delivery");
   }
+});
+
+test("acknowledgement failure keeps a successful recorded enquiry and logs no personal data", async (t) => {
+  const calls = provider(t, "ack");
+  const warnings: unknown[][] = [];
+  t.mock.method(console, "warn", (...values: unknown[]) => { warnings.push(values); });
+  const response = await POST(request());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true, acknowledgementSent: false });
+  assert.equal(calls.length, 3);
+  assert.equal(warnings.length, 1);
+  const log = JSON.stringify(warnings);
+  assert.ok(!log.includes("jose@example.com"));
+  assert.ok(!log.includes("test-access-token"));
+  assert.ok(!log.includes("test-refresh-token"));
+});
+
+test("HTML escapes enquiry text while the customer acknowledgement excludes free text", async (t) => {
+  const calls = provider(t);
+  const response = await POST(request({
+    ...enquiry,
+    name: "<Alex & Co>",
+    message: '<script>alert("test")</script>\nSecond line ✨',
+  }));
+  assert.equal(response.status, 200);
+  const admin = decodeMessage(calls[1]);
+  const customer = decodeMessage(calls[2]);
+  assert.ok(admin.html.includes("&lt;Alex &amp; Co&gt;"));
+  assert.ok(admin.html.includes("&lt;script&gt;"));
+  assert.ok(!admin.html.includes("<script>"));
+  assert.ok(admin.text.includes("Second line ✨"));
+  assert.ok(!customer.html.includes("alert("));
+  assert.ok(!customer.text.includes("alert("));
 });
 
 test("origin, JSON, honeypot and request-size checks reject requests before sending", async (t) => {
@@ -182,5 +253,5 @@ test("per-instance burst guard limits repeated delivery attempts", async (t) => 
   const limited = await POST(request(enquiry, headers));
   assert.equal(limited.status, 429);
   assert.ok(Number(limited.headers.get("Retry-After")) > 0);
-  assert.equal(calls.length, 10);
+  assert.equal(calls.length, 15);
 });

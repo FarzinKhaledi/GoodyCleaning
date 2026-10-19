@@ -91,8 +91,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    await sendEnquiryEmail(parsed.data);
-    return NextResponse.json({ success: true });
+    const delivery = await sendEnquiryEmail(parsed.data);
+    return NextResponse.json({ success: true, acknowledgementSent: delivery.acknowledgementSent });
   } catch (error) {
     return NextResponse.json({
       error: "We couldn’t send your enquiry. Please try again in a moment or call 0800 001 6171.",

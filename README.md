@@ -4,7 +4,11 @@ GoodyCleaning is a standalone Next.js application for carpet cleaning, deep clea
 
 The initial launch uses **enquiry mode**. Customers submit a quote request on the website or use the phone links. The form requires a name, valid email address, and phone number and sends the full enquiry to **support@goodyvan.com** through Gmail OAuth. This flow needs a configured email connection, but no database or payment provider. No tariff is displayed before prices are approved. The full instant-booking form stays hidden unless `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` is set before building.
 
-Launch contact details: **0800 001 6171**, direct mobile **+44 7771 114041**, and **support@goodyvan.com**. Enquiry success appears only after Gmail accepts the message. Failures preserve the customer's details and offer a retry or phone call.
+Launch contact details: **0800 001 6171**, direct mobile **+44 7771 114041**, and **support@goodyvan.com**. Enquiry success appears only after Gmail accepts the team notification. Delivery failures preserve the customer's details and offer a retry or phone call.
+
+Team notifications and customer acknowledgements use branded HTML, a plain-text alternative, and the original cleaning logo embedded as an inline PNG. The customer email confirms receipt and explains that the team will review the enquiry and get back to them; it does not confirm a booking or promise a response time. Both messages send from `GoodyCleaning <support@goodyvan.com>`. Replies to the team notification go to the customer; replies to the acknowledgement go to support.
+
+Before deploying this mailer, verify `support@goodyvan.com` as an authorized Gmail sending address and set `GMAIL_SENDER` to that address. A receiving inbox or working notification to support does not establish send-as authorization. If team delivery fails, no acknowledgement is attempted. If only the acknowledgement fails, the enquiry remains successful and the form explains that resubmission is unnecessary.
 
 The application has its own [GitHub repository](https://github.com/FarzinKhaledi/GoodyCleaning). GoodyVan remains a separate application.
 
@@ -55,8 +59,8 @@ Configure private production values in the hosting project, separately from deve
 | `AUTH_URL` | Authentication origin; use `https://goodycleaning.co.uk` in production. |
 | `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED` | Defaults to `false`. Enquiry mode shows the website enquiry form and phone links. Set `true` before building only after prices and all booking services are approved and ready. |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Server-only OAuth credentials for enquiry delivery, with Gmail send permission. |
-| `GMAIL_SENDER` | Authorized sending mailbox or verified send-as address. Customer email becomes Reply-To. |
-| `GMAIL_USER` | Optional sender fallback when `GMAIL_SENDER` is empty. |
+| `GMAIL_SENDER` | Must be `support@goodyvan.com`, authorized as the connected Gmail account or a verified send-as address. |
+| `GMAIL_USER` | Optional sender fallback when `GMAIL_SENDER` is empty; must also be `support@goodyvan.com`. |
 | `AUTH_SECRET` | Private, randomly generated Auth.js secret. |
 | `DATABASE_URL` | Dedicated GoodyCleaning Postgres database connection string. |
 | `REVOLUT_SECRET_KEY` | Merchant API secret for the intended sandbox or live account. `REVOLUT_API_KEY` is accepted as a legacy alias. |
@@ -101,7 +105,7 @@ On Vercel, import the existing GoodyCleaning repository as its own project, conf
 
 ## Booking and payment behavior
 
-Enquiry mode is the default. Customers submit their name, email, phone, service, and property size to `/api/enquiries`; postcode, preferred date, and message are optional. The endpoint sends directly to the fixed support mailbox and does not create an admin quote or database record. It validates contact details, bounds request size, checks browser origin, and applies a honeypot and per-instance burst limit. Hosting-level limits can supplement that burst limit across instances. No prices or live payment form are shown. The instant checkout API rejects submissions while instant booking is disabled.
+Enquiry mode is the default. Customers submit their name, email, phone, service, and property size to `/api/enquiries`; postcode, preferred date, and message are optional. The endpoint sends a branded notification to the fixed support mailbox and then acknowledges the customer. It does not create an admin quote or database record. Customer acknowledgements include a request summary but exclude arbitrary free-text notes. The endpoint validates contact details, bounds request size, checks browser origin, and applies a honeypot and per-instance burst limit. Hosting-level limits can supplement that burst limit across instances. No prices or live payment form are shown. The instant checkout API rejects submissions while instant booking is disabled.
 
 When `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true`, studios, one-bedroom homes, and two-bedroom homes use the price table in `src/lib/pricing.ts` and proceed to Revolut hosted checkout. Homes with three or more bedrooms and commercial properties request a custom quote. Admins can review requests and send payment links from `/admin`.
 
