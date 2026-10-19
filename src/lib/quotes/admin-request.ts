@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { isAdminRole } from "@/lib/auth/admin-access";
 import { QuoteWorkflowError } from "./workflow";
 import { RevolutError } from "@/lib/revolut";
 
 export async function validateAdminRequest(request: Request, id: string) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Sign in to manage quotes." }, { status: 401 });
+  if (!session?.user?.id || !isAdminRole(session.user.role)) return NextResponse.json({ error: "Sign in to manage quotes." }, { status: 401 });
   if (!z.uuid().safeParse(id).success) return NextResponse.json({ error: "Invalid quote ID." }, { status: 400 });
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return NextResponse.json({ error: "Please use this admin dashboard." }, { status: 403 });

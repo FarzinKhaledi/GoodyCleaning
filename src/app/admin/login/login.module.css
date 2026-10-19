@@ -1,0 +1,145 @@
+.page {
+  --ink: #112d43;
+  --muted: #71808a;
+  --blue: #2457e8;
+  --lime: #d6f28b;
+  display: grid;
+  grid-template-columns: 1.04fr 1fr;
+  min-height: 100dvh;
+  padding: 20px;
+  background: #f7f8f4;
+  color: var(--ink);
+}
+
+.page :is(a, button, input):focus-visible { outline: 3px solid #2457e8; outline-offset: 4px; }
+.page button { cursor: pointer; }
+.page button:disabled { cursor: wait; opacity: .65; }
+.brandPanel { position: relative; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; min-height: 760px; padding: 25px 50px 29px; border-radius: 24px; background: #102b43; color: white; isolation: isolate; }
+.brandPanel::before { position: absolute; z-index: -1; top: -200px; right: -260px; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, #2457e824 0%, transparent 68%); content: ""; }
+.brandHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brandHeader > a { flex-shrink: 1; }
+.workspaceBadge { display: flex; flex-shrink: 0; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid #ffffff16; border-radius: 999px; color: #c1ced5; font-size: 9px; font-weight: 500; }
+.workspaceBadge > span { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 9px #d6f28b55; }
+.brandContent { position: relative; z-index: 1; width: 100%; max-width: 450px; margin: 30px auto 40px; animation: settle-in .75s both; }
+.eyebrow { display: flex; align-items: center; gap: 9px; color: #c1d6cb; font-size: 9px; font-weight: 550; letter-spacing: .15em; text-transform: uppercase; }
+.eyebrow > span { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); }
+.brandContent h2 { margin-top: 23px; font-size: clamp(42px, 4.4vw, 66px); font-weight: 500; letter-spacing: -.065em; line-height: 1.075; }
+.brandContent > p { max-width: 310px; margin-top: 22px; color: #b2c2cc; font-size: 13px; line-height: 1.85; }
+.workflow { margin-top: 38px; padding: 20px; border: 1px solid #ffffff19; border-radius: 18px; background: #ffffff05; box-shadow: 0 24px 60px #00142112; }
+.workflowHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; color: #c3d1d9; font-size: 10px; }
+.workflowHeader svg { color: var(--lime); }
+.workflowRow { display: flex; align-items: center; gap: 13px; }
+.workflowIcon { display: grid; width: 39px; height: 39px; flex-shrink: 0; place-items: center; border: 1px solid #ffffff1c; border-radius: 12px; background: #ffffff08; color: #d7e6ed; }
+.blueIcon { border-color: #5a80ff38; background: #2457e82e; color: #a0b5ff; }
+.limeIcon { border-color: #d6f28b25; background: #d6f28b13; color: var(--lime); }
+.workflowRow > div { display: flex; flex: 1; flex-direction: column; gap: 4px; }
+.workflowRow strong { font-size: 11px; font-weight: 550; }
+.workflowRow > div > span { color: #94abb9; font-size: 10px; }
+.stepNumber { color: #728c9d; font-size: 10px; font-variant-numeric: tabular-nums; }
+.workflowConnector { width: 1px; height: 15px; margin: 5px 0 5px 19px; background: #ffffff18; }
+.brandFooter { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; color: #819ba9; font-size: 9px; letter-spacing: .06em; }
+.footerSparkle { color: var(--lime); font-size: 28px; line-height: 1; animation: turn-gently 16s ease-in-out infinite; }
+.decorativeRing { position: absolute; z-index: -1; right: -210px; bottom: -335px; width: 620px; height: 620px; border: 1px solid #8bb3ce12; border-radius: 50%; box-shadow: 0 0 0 55px #8bb3ce04, 0 0 0 110px #8bb3ce04; }
+.signInPanel { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; padding: 28px 45px 13px; }
+.backLink { display: inline-flex; align-self: flex-start; align-items: center; gap: 9px; border-radius: 4px; color: #71808a; font-size: 11px; transition: color .2s; }
+.backLink:hover { color: var(--blue); }
+.signInContent { width: 100%; max-width: 370px; margin: 50px auto 65px; animation: settle-in .85s .07s both; }
+.mobileBrand { display: none; }
+.lockBadge { position: relative; display: grid; width: 53px; height: 53px; place-items: center; border: 1px solid #112d4312; border-radius: 17px; background: #edf0e8; color: var(--ink); }
+.smallSparkle { position: absolute; right: -7px; top: -10px; color: var(--blue); font-size: 24px; }
+.formEyebrow { margin-top: 26px; color: var(--blue); font-size: 9px; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
+.signInContent h1 { margin-top: 13px; font-size: clamp(34px, 3.4vw, 46px); font-weight: 550; letter-spacing: -.065em; line-height: 1.15; }
+.formDescription { margin-top: 17px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.signInActions { margin-top: 31px; }
+.googleButton { display: flex; width: 100%; min-height: 55px; align-items: center; gap: 14px; padding: 14px 17px; border: 1px solid #112d4326; border-radius: 11px; background: #fff; color: var(--ink); box-shadow: 0 2px 3px #102c4303; font-size: 12px; font-weight: 600; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.googleButton > span { flex: 1; text-align: left; }
+.googleButton > svg:last-child { color: #88939b; }
+.googleButton:hover:not(:disabled) { transform: translateY(-1px); border-color: #2457e87a; box-shadow: 0 5px 17px #2457e80b; }
+.googleButton:disabled { cursor: not-allowed; }
+.divider { display: flex; align-items: center; gap: 14px; margin-block: 22px; color: #8b969d; font-size: 10px; }
+.divider > span:not(:nth-child(2)) { height: 1px; flex: 1; background: #112d4310; }
+.credentialsToggle { display: flex; width: 100%; min-height: 37px; align-items: center; justify-content: center; gap: 10px; border-radius: 6px; color: #5d707d; font-size: 11px; transition: color .2s; }
+.credentialsToggle:hover { color: var(--blue); }
+.credentialsToggle > svg:last-child { margin-left: 2px; transition: transform .2s; }
+.credentialsToggle .chevronOpen { transform: rotate(180deg); }
+.credentialsForm { display: flex; flex-direction: column; gap: 18px; padding-top: 21px; animation: settle-in .25s both; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { color: #425d6e; font-size: 11px; font-weight: 550; }
+.field input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid #112d4325; border-radius: 9px; background: #fff; color: var(--ink); font-family: inherit; font-size: 13px; transition: border-color .2s; }
+.field input::placeholder { color: #99a4ab; }
+.field input:focus { border-color: var(--blue); }
+.passwordField { position: relative; }
+.passwordField input { padding-right: 48px; }
+.passwordField button { position: absolute; top: 4px; right: 4px; display: grid; width: 40px; height: 40px; place-items: center; border-radius: 6px; color: #6e8290; }
+.passwordField button:hover { background: #f3f5f1; }
+.signInButton { display: flex; min-height: 49px; align-items: center; justify-content: center; gap: 12px; margin-top: 2px; padding: 12px 17px; border-radius: 10px; background: var(--blue); color: #fff; font-size: 12px; font-weight: 550; transition: background .2s; }
+.signInButton:hover:not(:disabled) { background: #1745cb; }
+.accessNote { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px; color: #83918e; font-size: 9px; line-height: 1.5; }
+.accessNote svg { flex-shrink: 0; color: #6f8a79; }
+.supportNote { margin-top: 35px; text-align: center; color: #8b989e; font-size: 10px; }
+.supportNote a { display: inline-flex; align-items: center; gap: 4px; margin-left: 3px; color: #506779; transition: color .2s; }
+.supportNote a:hover { color: var(--blue); }
+.signInFooter { display: flex; align-items: center; justify-content: space-between; gap: 15px; color: #95a29f; font-size: 8px; }
+.signInFooter > span:last-child { display: flex; align-items: center; gap: 5px; }
+.error { margin-bottom: 18px; padding: 12px 14px; border: 1px solid #e7b9b2; border-radius: 9px; background: #fcf0ed; color: #913e35; font-size: 12px; line-height: 1.65; }
+.unavailableNote { margin-top: 10px; color: #71808a; font-size: 11px; line-height: 1.7; }
+.spinner { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes settle-in { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes turn-gently { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(45deg); } }
+
+@media (min-width: 1600px) {
+  .page { padding: 28px; }
+  .brandPanel { padding: 35px 65px 35px; }
+  .brandContent { max-width: 490px; }
+  .signInPanel { padding-inline: 65px; }
+  .signInContent { max-width: 390px; }
+}
+@media (max-width: 1100px) {
+  .brandPanel { padding-inline: 32px; }
+  .brandHeader > a { max-width: 145px; }
+  .workspaceBadge { font-size: 8px; gap: 5px; padding-inline: 8px; }
+  .signInPanel { padding-inline: 30px; }
+  .brandContent h2 { font-size: 49px; }
+  .workflow { padding: 17px; }
+}
+@media (max-width: 850px) {
+  .page { grid-template-columns: .88fr 1fr; padding: 13px; }
+  .brandPanel { min-height: 730px; padding-inline: 23px; }
+  .brandHeader { justify-content: center; }
+  .brandHeader > a { max-width: 155px; }
+  .workspaceBadge { display: none; }
+  .brandContent h2 { font-size: 42px; }
+  .brandContent > p { font-size: 12px; }
+  .workflow { padding: 15px; }
+  .workflowHeader { font-size: 9px; }
+  .workflowRow { gap: 10px; }
+  .workflowRow strong { font-size: 10px; }
+  .workflowRow > div > span { font-size: 9px; }
+  .workflowIcon { width: 33px; height: 33px; border-radius: 10px; }
+  .workflowConnector { margin-left: 16px; }
+  .stepNumber { display: none; }
+  .signInPanel { padding-inline: 25px; }
+  .signInFooter { font-size: 7px; gap: 10px; }
+  .signInFooter > span:last-child { max-width: 115px; line-height: 1.5; }
+}
+@media (max-width: 650px) {
+  .page { display: block; padding: 0; }
+  .brandPanel { display: none; }
+  .signInPanel { min-height: 100dvh; padding: 24px 25px 20px; }
+  .backLink { font-size: 11px; }
+  .signInContent { max-width: 370px; margin-block: 25px 50px; }
+  .mobileBrand { display: flex; justify-content: center; margin: -4px auto 30px; }
+  .lockBadge { width: 46px; height: 46px; border-radius: 14px; }
+  .lockBadge > svg { width: 20px; height: 20px; }
+  .formEyebrow { margin-top: 23px; }
+  .signInContent h1 { margin-top: 12px; font-size: 39px; }
+  .formDescription { margin-top: 14px; font-size: 13px; }
+  .signInActions { margin-top: 27px; }
+  .signInFooter { font-size: 8px; }
+  .signInFooter > span:last-child { max-width: none; }
+  .field input { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; }
+}
