@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     "end of tenancy cleaning",
     "carpet cleaning",
     "London cleaning",
-    "eco-friendly cleaning",
+    "professional cleaning",
   ],
   authors: [{ name: siteConfig.name }],
   openGraph: {

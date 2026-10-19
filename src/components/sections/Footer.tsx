@@ -5,7 +5,7 @@ import { siteConfig } from "@/lib/config";
 const quickLinks = [
   { href: "#services", label: "Our services" },
   { href: "#why-us", label: "The Goody difference" },
-  { href: "#testimonials", label: "Customer stories" },
+  { href: "#how-it-works", label: "How it works" },
   { href: "#faq", label: "Your questions" },
 ];
 
@@ -37,8 +37,8 @@ export function Footer() {
               <BrandLogo width={480} height={320} />
             </a>
             <p className="mt-5 max-w-xs text-sm leading-7 text-white/60">
-              {siteConfig.tagline} Thoughtful, professional cleaning for homes
-              and spaces across the UK.
+              {siteConfig.tagline} Thoughtful, professional cleaning for your
+              home or workspace.
             </p>
             <a
               href={siteConfig.goodyVan.url}

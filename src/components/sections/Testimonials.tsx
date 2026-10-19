@@ -9,10 +9,10 @@ interface TestimonialsProps {
   isExample?: boolean;
 }
 
-export function Testimonials({ testimonials, isExample = true }: TestimonialsProps) {
+export function Testimonials({ testimonials, isExample = false }: TestimonialsProps) {
   const [page, setPage] = useState(0);
 
-  if (testimonials.length === 0) return null;
+  if (isExample || testimonials.length === 0) return null;
 
   const pageSize = 3;
   const pageCount = Math.ceil(testimonials.length / pageSize);
@@ -31,15 +31,13 @@ export function Testimonials({ testimonials, isExample = true }: TestimonialsPro
         >
           <div>
             <span className="eyebrow">
-              {isExample ? "A glimpse of the Goody experience" : "The good word"}
+              The good word
             </span>
             <h2 className="section-heading mt-4 max-w-2xl text-[#102c43]">
-              {isExample ? "Fresh spaces. Happy stories." : "A little love for a lovely clean."}
+              A little love for a lovely clean.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-[#102c43]/65">
-              {isExample
-                ? "Example customer stories to show the kinds of cleans we offer."
-                : "Small details, fresh starts, and the difference a good clean makes."}
+              Small details, fresh starts, and the difference a good clean makes.
             </p>
           </div>
 
@@ -90,7 +88,7 @@ export function Testimonials({ testimonials, isExample = true }: TestimonialsPro
                 <figcaption className="mt-7 flex items-center justify-between gap-3 border-t border-[#102c43]/10 pt-5">
                   <span className="text-sm font-semibold text-[#102c43]">{testimonial.name}</span>
                   <span className="text-xs text-[#102c43]/50">
-                    {isExample ? "Example review" : "Customer review"}
+                    Customer review
                   </span>
                 </figcaption>
               </figure>

@@ -3,7 +3,7 @@ export const siteConfig = {
   logo: "/GoodyCleaning-logo.webp",
   tagline: "Cleaner homes. Happier lives.",
   description:
-    "Professional cleaning services across the UK — deep cleaning, end of tenancy, and carpet cleaning with eco-friendly products.",
+    "Deep cleaning, end of tenancy, and carpet cleaning for homes and workspaces. Contact GoodyCleaning for a tailored quote.",
   url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goodycleaning.co.uk").replace(/\/+$/, ""),
   goodyVan: {
     name: "GoodyVan",

@@ -1,18 +1,18 @@
-import { ArrowUpRight, Leaf, ReceiptText, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowUpRight, HeartHandshake, ReceiptText, SlidersHorizontal, Sparkles } from "lucide-react";
 import { siteConfig } from "@/lib/config";
 
 const benefits = [
   {
-    icon: ShieldCheck,
+    icon: HeartHandshake,
     title: "Good people. Great care.",
     description:
-      "Trained, insured professionals who treat your space with the care it deserves.",
+      "A cleaning service shaped around your space and the details that matter to you.",
   },
   {
-    icon: Leaf,
-    title: "A kinder kind of clean.",
+    icon: SlidersHorizontal,
+    title: "A clean that fits.",
     description:
-      "Eco-friendly cleaning products for a home that feels fresh, comfortable, and cared for.",
+      "Tell us about your priorities and any product preferences, so we can discuss the right clean for your space.",
   },
   {
     icon: Sparkles,

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, Leaf, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, HeartHandshake, MessageCircle, Sparkles } from "lucide-react";
 import { getPrice, PROPERTY_SIZE_LABELS, SERVICE_LABELS, type PropertySize, type ServiceType } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
@@ -44,8 +44,8 @@ export function Hero() {
               </a>
             </div>
             <div className="hero-trust flex flex-wrap items-center gap-x-5 gap-y-3 text-[11px] font-medium text-[#516373] sm:text-xs">
-              <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#2457e8]" aria-hidden="true" /> Trained & insured</span>
-              <span className="inline-flex items-center gap-2"><Leaf className="h-4 w-4 text-[#2457e8]" aria-hidden="true" /> Eco-conscious care</span>
+              <span className="inline-flex items-center gap-2"><HeartHandshake className="h-4 w-4 text-[#2457e8]" aria-hidden="true" /> Care for your space</span>
+              <span className="inline-flex items-center gap-2"><MessageCircle className="h-4 w-4 text-[#2457e8]" aria-hidden="true" /> Friendly, direct support</span>
               <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#2457e8]" aria-hidden="true" /> {siteConfig.booking.instantEnabled ? "Clear, upfront prices" : "Quotes for your space"}</span>
             </div>
           </div>

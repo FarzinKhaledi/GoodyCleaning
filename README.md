@@ -12,7 +12,16 @@ The application has its own [GitHub repository](https://github.com/FarzinKhaledi
 
 The primary production address is **https://goodycleaning.co.uk**. Both the `.co.uk` and `.com` domains are managed through GoDaddy. Configure `goodycleaning.com` and the `www` variants to redirect permanently to the primary `.co.uk` address, preserving paths and query parameters. DNS, HTTPS, redirects, and deployment domains must be configured in the hosting/domain accounts; this repository does not provision them.
 
-The referral plan is to link GoodyVan cleaning calls to action to `https://goodycleaning.co.uk/#booking` and provide a GoodyVan link from GoodyCleaning for customers who need moving services. These are normal links between independent sites; bookings, payments, and admin access remain within the relevant application. Referral parameters can be added when tracking is configured.
+GoodyVan's cleaning introduction lives at `/services/cleaning`, with links from its homepage, service directory, navigation, and footer. Its enquiry links lead to `https://goodycleaning.co.uk/` with referral parameters and the `#booking` anchor. GoodyCleaning's footer links back to GoodyVan for moving services. Each application handles its own enquiries and bookings.
+
+### Manual DNS setup
+
+1. Open [GoodyCleaning's Vercel domain settings](https://vercel.com/farzinkhaledis-projects/goody-cleaning/settings/domains). Add `goodycleaning.co.uk`, `www.goodycleaning.co.uk`, `goodycleaning.com`, and `www.goodycleaning.com` to this project. Complete any ownership verification Vercel requests first.
+2. Copy the exact DNS record names, types, and values shown by Vercel into GoDaddy for each domain. Keep existing email records. Do not guess the A/CNAME values or use values copied from another project.
+3. Set `goodycleaning.co.uk` as the production destination. The application permanently redirects the other three hostnames to it, preserving paths and query parameters.
+4. Once Vercel reports valid configuration and HTTPS is ready, test all four addresses and a URL with a path and query string. Confirm the final host is `goodycleaning.co.uk`.
+
+The release must also be deployed to Vercel's production environment; adding DNS to a project does not promote a preview deployment. Preview links may require Vercel sign-in according to the project's deployment protection settings.
 
 ## Local development
 
@@ -107,7 +116,7 @@ Sandbox and production accounts use different API endpoints and signing secrets.
 
 ## Content before launch
 
-Confirm business contact information and social links in `src/lib/config.ts`, confirm service claims, and publish appropriate privacy and booking terms. Keep placeholder prices hidden in enquiry mode; replace them with approved prices before enabling instant booking. Customer stories supplied as examples are explicitly labelled; replace them with genuine approved reviews or remove the example section for production. Seeding does not publish sample reviews.
+Confirm business contact information, social links, and service coverage in `src/lib/config.ts`, and publish appropriate privacy and booking terms. Keep placeholder prices hidden in enquiry mode; replace them with approved prices before enabling instant booking. Customer stories appear only when genuine reviews have been approved and published in the database. Historical seed examples are excluded, and the section hides when there are no customer reviews. Seeding does not publish sample reviews.
 
 ## Main files
 
