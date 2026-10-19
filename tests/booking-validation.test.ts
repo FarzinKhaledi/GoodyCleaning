@@ -50,7 +50,9 @@ test("quote prices fit integer pence stored by Postgres", () => {
 
 test("malformed JSON returns a client error before database access", async () => {
   for (const handler of [instantCheckout, requestQuote]) {
-    const response = await handler(new Request("http://localhost/api/booking", { method: "POST", body: "{" }));
+    const response = await handler(new Request("http://localhost/api/booking", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{",
+    }));
     assert.equal(response.status, 400);
   }
 });

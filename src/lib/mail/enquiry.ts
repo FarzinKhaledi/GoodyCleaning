@@ -6,9 +6,10 @@ import type { EnquiryFormData } from "@/lib/validations";
 import {
   buildAdminEnquiryEmail,
   buildCustomerAcknowledgementEmail,
+  type EnquiryEmailContent,
 } from "./enquiry-templates";
 
-const SUPPORT_ADDRESS = "support@goodyvan.com";
+export const SUPPORT_ADDRESS = "support@goodyvan.com";
 const REQUEST_TIMEOUT_MS = 5_000;
 
 export class EnquiryDeliveryError extends Error {
@@ -99,13 +100,14 @@ async function sendMessage(accessToken: string, mime: string) {
       typeof result.id !== "string" || !result.id.trim()) {
       throw new EnquiryDeliveryError("send");
     }
+    return { id: result.id };
   } catch {
     // Provider responses and exception messages can contain sensitive data.
     throw new EnquiryDeliveryError("send");
   }
 }
 
-export async function sendEnquiryEmail(enquiry: EnquiryFormData): Promise<{ acknowledgementSent: boolean }> {
+async function createTransport() {
   const clientId = process.env.GMAIL_CLIENT_ID;
   const clientSecret = process.env.GMAIL_CLIENT_SECRET;
   const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
@@ -115,30 +117,13 @@ export async function sendEnquiryEmail(enquiry: EnquiryFormData): Promise<{ ackn
     sender.toLowerCase() !== SUPPORT_ADDRESS || !z.email().safeParse(sender).success) {
     throw new EnquiryDeliveryError("configuration");
   }
-  if (!z.email().safeParse(enquiry.email).success) throw new EnquiryDeliveryError("send");
-
-  let adminMime: string;
-  let customerMime: string;
+  let logo: Buffer;
   try {
     // Literal path is traced into the serverless deployment by Next.js.
-    const logo = await readFile(join(process.cwd(), "src/lib/mail/assets/goodycleaning-logo.png"));
+    logo = await readFile(join(process.cwd(), "src/lib/mail/assets/goodycleaning-logo.png"));
     if (!logo.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
       throw new EnquiryDeliveryError("configuration");
     }
-    adminMime = createMime({
-      to: SUPPORT_ADDRESS,
-      replyTo: enquiry.email,
-      email: buildAdminEnquiryEmail(enquiry),
-      logo,
-      autoSubmitted: "auto-generated",
-    });
-    customerMime = createMime({
-      to: enquiry.email,
-      replyTo: SUPPORT_ADDRESS,
-      email: buildCustomerAcknowledgementEmail(enquiry),
-      logo,
-      autoSubmitted: "auto-replied",
-    });
   } catch {
     throw new EnquiryDeliveryError("configuration");
   }
@@ -167,6 +152,49 @@ export async function sendEnquiryEmail(enquiry: EnquiryFormData): Promise<{ ackn
   } catch {
     throw new EnquiryDeliveryError("token");
   }
+
+  return { accessToken, logo };
+}
+
+export interface BrandedEmailOptions {
+  to: string;
+  replyTo?: string;
+  email: EnquiryEmailContent;
+  autoSubmitted?: "auto-generated" | "auto-replied";
+}
+
+/** Send a branded message from the verified support Workspace account. */
+export async function sendBrandedEmail({
+  to, replyTo = SUPPORT_ADDRESS, email, autoSubmitted = "auto-generated",
+}: BrandedEmailOptions): Promise<{ id: string }> {
+  // No display names, CRLF, or arbitrary mail headers may enter address fields.
+  if (!z.email().safeParse(to).success || !z.email().safeParse(replyTo).success) {
+    throw new EnquiryDeliveryError("send");
+  }
+  const { accessToken, logo } = await createTransport();
+  return sendMessage(accessToken, createMime({ to, replyTo, email, logo, autoSubmitted }));
+}
+
+export async function sendEnquiryEmail(
+  enquiry: EnquiryFormData,
+  options: { quoteId?: string } = {},
+): Promise<{ acknowledgementSent: boolean }> {
+  if (!z.email().safeParse(enquiry.email).success) throw new EnquiryDeliveryError("send");
+  const { accessToken, logo } = await createTransport();
+  const adminMime = createMime({
+    to: SUPPORT_ADDRESS,
+    replyTo: enquiry.email,
+    email: buildAdminEnquiryEmail(enquiry, options),
+    logo,
+    autoSubmitted: "auto-generated",
+  });
+  const customerMime = createMime({
+    to: enquiry.email,
+    replyTo: SUPPORT_ADDRESS,
+    email: buildCustomerAcknowledgementEmail(enquiry),
+    logo,
+    autoSubmitted: "auto-replied",
+  });
 
   await sendMessage(accessToken, adminMime);
   try {

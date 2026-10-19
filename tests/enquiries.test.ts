@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { after, beforeEach, test, type TestContext } from "node:test";
+import { after, afterEach, beforeEach, mock, test, type TestContext } from "node:test";
 import { POST } from "../src/app/api/enquiries/route";
 import { enquirySchema } from "../src/lib/validations";
+import type { EnquiryFormData } from "../src/lib/validations";
+import { enquiryStore } from "../src/lib/quotes/enquiries";
 
 const envKeys = ["GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REFRESH_TOKEN", "GMAIL_SENDER", "GMAIL_USER"] as const;
 const original = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
 let clientNumber = 0;
+let savedEnquiries: EnquiryFormData[] = [];
+const savedQuoteId = "12345678-1234-1234-1234-123456789012";
 const enquiry = {
   name: " José Smith ",
   email: " jose@example.com ",
@@ -20,6 +24,14 @@ const enquiry = {
 };
 
 beforeEach(() => {
+  savedEnquiries = [];
+  mock.method(enquiryStore, "create", async (data: EnquiryFormData) => {
+    savedEnquiries.push(structuredClone(data));
+    return { id: savedQuoteId };
+  });
+  // A test must install its own provider stub; real mail calls are never allowed.
+  mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected provider call"); });
+  mock.method(console, "warn", () => undefined);
   Object.assign(process.env, {
     GMAIL_CLIENT_ID: "test-client-id",
     GMAIL_CLIENT_SECRET: "test-client-secret",
@@ -28,6 +40,7 @@ beforeEach(() => {
     GMAIL_USER: "support@goodyvan.com",
   });
 });
+afterEach(() => mock.restoreAll());
 after(() => {
   for (const key of envKeys) {
     if (original[key] === undefined) delete process.env[key];
@@ -125,6 +138,7 @@ test("missing or invalid contact data returns field errors without contacting Gm
     assert.notEqual(body.success, true);
   }
   assert.equal(calls.length, 0);
+  assert.equal(savedEnquiries.length, 0);
 });
 
 test("valid enquiry sends branded admin and customer messages with safe CID MIME", async (t) => {
@@ -133,6 +147,8 @@ test("valid enquiry sends branded admin and customer messages with safe CID MIME
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { success: true, acknowledgementSent: true });
   assert.equal(calls.length, 3);
+  assert.equal(savedEnquiries.length, 1);
+  assert.equal(savedEnquiries[0].name, "José Smith");
   const refreshBody = new URLSearchParams(String(calls[0].init?.body));
   assert.equal(refreshBody.get("grant_type"), "refresh_token");
   assert.equal(refreshBody.get("refresh_token"), "test-refresh-token");
@@ -153,22 +169,26 @@ test("valid enquiry sends branded admin and customer messages with safe CID MIME
     assert.ok(admin.text.includes(value), value);
   }
   assert.ok(!customer.text.includes(enquiry.message));
+  assert.ok(admin.text.includes(`/admin/quotes/${savedQuoteId}`));
 });
 
-test("missing or invalid mail configuration fails closed with no stub success", async (t) => {
+test("saved enquiries remain accepted when mail configuration is missing or invalid", async (t) => {
   const calls = provider(t);
   delete process.env.GMAIL_CLIENT_SECRET;
   let response = await POST(request());
-  assert.equal(response.status, 503);
-  assert.notEqual((await response.json()).success, true);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true, acknowledgementSent: false });
   process.env.GMAIL_CLIENT_SECRET = "test-client-secret";
   process.env.GMAIL_SENDER = "different-valid-sender@example.com";
   response = await POST(request());
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true, acknowledgementSent: false });
   process.env.GMAIL_SENDER = "sender@example.com\r\nBcc: attacker@example.com";
   response = await POST(request());
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { success: true, acknowledgementSent: false });
   assert.equal(calls.length, 0);
+  assert.equal(savedEnquiries.length, 3);
 });
 
 test("support GMAIL_USER is a valid fallback and Origin may be absent", async (t) => {
@@ -181,19 +201,32 @@ test("support GMAIL_USER is a valid fallback and Origin may be absent", async (t
   assert.match(decodeMessage(calls[1]).headers, /From: GoodyCleaning <support@goodyvan.com>/);
 });
 
-test("Gmail token, send, malformed-response and timeout failures never acknowledge delivery", async (t) => {
+test("Gmail failures never report an acknowledgement but retain the durable enquiry", async (t) => {
   for (const failure of ["token", "send", "missing-token", "missing-id", "timeout"] as const) {
     const calls = provider(t, failure);
     const response = await POST(request());
-    assert.equal(response.status, 502, failure);
+    assert.equal(response.status, 200, failure);
     const body = await response.text();
-    assert.ok(!body.includes('"success":true'));
+    assert.deepEqual(JSON.parse(body), { success: true, acknowledgementSent: false });
     assert.ok(!body.includes("test-refresh-token"));
     assert.ok(!body.includes("test-access-token"));
     assert.ok(!body.includes("jose@example.com"));
     assert.ok(calls.length >= 1);
     assert.ok(calls.length <= 2, "No customer acknowledgement follows a failed admin delivery");
   }
+  assert.equal(savedEnquiries.length, 5);
+});
+
+test("storage failure rejects the enquiry before sending either email", async (t) => {
+  const calls = provider(t);
+  t.mock.method(enquiryStore, "create", async () => { throw new Error("Private database details jose@example.com"); });
+  const response = await POST(request());
+  assert.equal(response.status, 502);
+  const body = await response.text();
+  assert.ok(!body.includes('"success":true'));
+  assert.ok(!body.includes("Private database"));
+  assert.ok(!body.includes("jose@example.com"));
+  assert.equal(calls.length, 0);
 });
 
 test("acknowledgement failure keeps a successful recorded enquiry and logs no personal data", async (t) => {
@@ -204,6 +237,7 @@ test("acknowledgement failure keeps a successful recorded enquiry and logs no pe
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { success: true, acknowledgementSent: false });
   assert.equal(calls.length, 3);
+  assert.equal(savedEnquiries.length, 1);
   assert.equal(warnings.length, 1);
   const log = JSON.stringify(warnings);
   assert.ok(!log.includes("jose@example.com"));
@@ -242,6 +276,7 @@ test("origin, JSON, honeypot and request-size checks reject requests before send
     assert.equal(response.status, status);
   }
   assert.equal(calls.length, 0);
+  assert.equal(savedEnquiries.length, 0);
 });
 
 test("per-instance burst guard limits repeated delivery attempts", async (t) => {
@@ -254,4 +289,5 @@ test("per-instance burst guard limits repeated delivery attempts", async (t) => 
   assert.equal(limited.status, 429);
   assert.ok(Number(limited.headers.get("Retry-After")) > 0);
   assert.equal(calls.length, 15);
+  assert.equal(savedEnquiries.length, 5);
 });

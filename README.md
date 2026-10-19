@@ -2,13 +2,13 @@
 
 GoodyCleaning is a standalone Next.js application for carpet cleaning, deep cleaning, and before/after tenancy cleaning. Its homepage includes a service and property selector, responsive service cards, enquiry actions, FAQs, customer stories, and animations that respect reduced-motion preferences.
 
-The initial launch uses **enquiry mode**. Customers submit a quote request on the website or use the phone links. The form requires a name, valid email address, and phone number and sends the full enquiry to **support@goodyvan.com** through Gmail OAuth. This flow needs a configured email connection, but no database or payment provider. No tariff is displayed before prices are approved. The full instant-booking form stays hidden unless `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` is set before building.
+The default is **enquiry mode**. The form requires a name, valid email address, and phone number. Every accepted enquiry is saved in the dedicated GoodyCleaning database before notification emails are attempted. Admins review the enquiry, set prices manually, and send an itemised quote with a secure Revolut payment link. The public site displays no automatic tariff. The legacy instant-booking form stays hidden unless `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` is set before building.
 
-Launch contact details: **0800 001 6171**, direct mobile **+44 7771 114041**, and **support@goodyvan.com**. Enquiry success appears only after Gmail accepts the team notification. Delivery failures preserve the customer's details and offer a retry or phone call.
+Launch contact details: **0800 001 6171**, direct mobile **+44 7771 114041**, and **support@goodyvan.com**. A database failure rejects submission before any email is sent. Once an enquiry is saved, email failure does not invite a duplicate submission: the form confirms receipt and explains if the acknowledgement could not be sent.
 
-Team notifications and customer acknowledgements use branded HTML, a plain-text alternative, and the original cleaning logo embedded as an inline PNG. The customer email confirms receipt and explains that the team will review the enquiry and get back to them; it does not confirm a booking or promise a response time. Both messages send from `GoodyCleaning <support@goodyvan.com>`. Replies to the team notification go to the customer; replies to the acknowledgement go to support.
+Enquiry notifications, customer acknowledgements, quotes, and payment confirmations use the verified Gmail connection with branded HTML, a plain-text alternative, and the original cleaning logo embedded as an inline PNG. All send from `GoodyCleaning <support@goodyvan.com>`. The acknowledgement confirms receipt and review; it does not confirm a booking or promise a response time. Replies to the team notification go to the customer; customer replies go to support.
 
-Before deploying this mailer, verify `support@goodyvan.com` as an authorized Gmail sending address and set `GMAIL_SENDER` to that address. A receiving inbox or working notification to support does not establish send-as authorization. If team delivery fails, no acknowledgement is attempted. If only the acknowledgement fails, the enquiry remains successful and the form explains that resubmission is unnecessary.
+Connect the support Google Workspace account with Gmail send permission and set `GMAIL_SENDER=support@goodyvan.com`. A different connected account may send as support only when that alias has been verified. The saved enquiry remains available in `/admin` if email delivery is unavailable. The Resend adapter is retained for legacy integrations; it is not required by this enquiry, admin quote, or payment-confirmation workflow.
 
 The application has its own [GitHub repository](https://github.com/FarzinKhaledi/GoodyCleaning). GoodyVan remains a separate application.
 
@@ -47,7 +47,7 @@ Generate a private Auth.js secret with `openssl rand -base64 32`. Keep `NEXT_PUB
 npm run dev
 ```
 
-Open [the local site](http://localhost:3000) or [admin login](http://localhost:3000/admin/login). The homepage renders without backend services; enquiry submission needs the Gmail OAuth variables below. Missing email configuration returns an error without claiming the enquiry was sent. Keep `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=false` for this mode. The complete booking backend and offline tests remain available locally; instant bookings, admin quote management, and admin authentication require their configured services.
+Open [the local site](http://localhost:3000) or [admin login](http://localhost:3000/admin/login). The homepage renders without backend services, but **every enquiry submission requires the configured database and current schema**. Gmail is needed for notifications and acknowledgements; Revolut is needed when an admin issues a payable quote. Configure `AUTH_SECRET` and create an admin account before using the dashboard. Keep `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=false` for the manual quote workflow.
 
 ## Environment variables
 
@@ -58,17 +58,16 @@ Configure private production values in the hosting project, separately from deve
 | `NEXT_PUBLIC_SITE_URL` | Public site origin; use `https://goodycleaning.co.uk` in production. Used in metadata, email links, and payment redirects. |
 | `AUTH_URL` | Authentication origin; use `https://goodycleaning.co.uk` in production. |
 | `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED` | Defaults to `false`. Enquiry mode shows the website enquiry form and phone links. Set `true` before building only after prices and all booking services are approved and ready. |
-| `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Server-only OAuth credentials for enquiry delivery, with Gmail send permission. |
+| `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Server-only credentials for the verified support Gmail connection, with send permission; used for enquiries, quotes, and payment confirmations. |
 | `GMAIL_SENDER` | Must be `support@goodyvan.com`, authorized as the connected Gmail account or a verified send-as address. |
 | `GMAIL_USER` | Optional sender fallback when `GMAIL_SENDER` is empty; must also be `support@goodyvan.com`. |
 | `AUTH_SECRET` | Private, randomly generated Auth.js secret. |
-| `DATABASE_URL` | Dedicated GoodyCleaning Postgres database connection string. |
+| `DATABASE_URL` | Dedicated GoodyCleaning Postgres connection string; required for all enquiry submissions, admin data, and payment records. |
 | `REVOLUT_SECRET_KEY` | Merchant API secret for the intended sandbox or live account. `REVOLUT_API_KEY` is accepted as a legacy alias. |
-| `REVOLUT_API_URL` | Optional explicit API base. Use the sandbox or production endpoint for the same environment as the key. |
-| `REVOLUT_WEBHOOK_SECRET` | Signing secret from the webhook registered in that Revolut environment. |
-| `RESEND_API_KEY` | Required for the separate instant-booking/admin transactional email workflows. |
-| `MAIL_FROM` | Sender on a domain verified in Resend, such as `GoodyCleaning <hello@goodycleaning.co.uk>`. |
-| `ADMIN_EMAIL` | Mailbox for new quote requests and payment alerts. |
+| `REVOLUT_API_URL` | Set explicitly for the intended environment: `https://merchant.revolut.com/api` in production or `https://sandbox-merchant.revolut.com/api` in sandbox. |
+| `REVOLUT_ENVIRONMENT` | Optional explicit `production` or `sandbox`; when supplied, must match the API URL and key environment. |
+| `REVOLUT_WEBHOOK_SECRET` | Signing secret belonging to the dedicated GoodyCleaning webhook endpoint in that Revolut environment. |
+| `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` | Legacy Resend adapter settings only; not used for the current enquiry, admin quote, or payment-confirmation emails. |
 | `ADMIN_EMAIL_LOGIN` | Explicit email for the admin account created by the seed command. |
 | `ADMIN_PASSWORD` | Unique admin seed password: at least 12 characters and at most 72 UTF-8 bytes. |
 
@@ -82,12 +81,25 @@ For a new development database:
 
 ```bash
 npm run db:push
+npm run db:migrate-quotes
 npm run db:seed
 ```
 
 The seed command requires explicit `ADMIN_EMAIL_LOGIN` and `ADMIN_PASSWORD`. It creates a missing admin account and inserts no example reviews. Existing admins and their passwords remain unchanged. Changing the seed environment variables does not reset an existing password; rotate an existing account through a deliberate credential update process.
 
-`db:generate`, `db:migrate`, and `db:studio` are available for managed schema work. Review generated migrations before applying them. Production setup is a separate operator action and is not performed by the application build.
+For an existing GoodyCleaning database with the initial schema, run `npm run db:migrate-quotes` before deploying this workflow. It applies the additive `drizzle/0001_quote_workflow.sql` migration in a transaction and preserves existing enquiries, admins, and bookings. It does not create the initial tables. Back up the intended production database and confirm its target before applying changes. An initial database still needs its base schema and an admin account.
+
+`db:generate`, `db:migrate`, and `db:studio` remain available for managed schema work. Review migrations before applying them. Database setup is an operator action, not part of the application build.
+
+## Admin quote workflow
+
+1. Sign in at `/admin/login`, open an enquiry, and review the customer's service, property, contact details, preferred date, and message.
+2. Enter line items with descriptions, quantities, and unit prices in GBP. Adjust scope, prices, and any discount manually. The server calculates the total in whole pence; no automatic pricing tariff is applied.
+3. Put agreed scope in the customer notes. Keep costs, margins, and staff instructions in **private internal notes**, which are excluded from the client preview and emails. Save the draft before reviewing the client preview.
+4. Review the itemised total and client-facing notes, then send the quote. Sending saves a Revolut order and payment link before emailing the customer from support. If email fails, use the send action again: it reuses the saved unpaid order rather than creating another link. Reload the latest version if another admin has changed the quote.
+5. To revise an issued quote, reopen it first. The old payment order must be cancelled and its cancellation verified before editing is enabled. Processing or paid orders cannot be silently replaced. Save the revised draft, review it, and send its new link.
+
+Quote and payment emails leave the cleaning date subject to agreement with the team. Payment does not confirm an unagreed date. A completed payment is recorded as a paid booking after provider verification; customer and internal payment emails are tracked separately so a retry need not resend an already delivered notification.
 
 ## Checks and production commands
 
@@ -99,15 +111,15 @@ npm run build
 npm start
 ```
 
-The offline tests cover booking validation, invalid JSON, webhook signatures, and missing production service configuration. They do not verify live payments, email delivery, or database transaction behavior. A build can read published testimonials from the configured database; use the intended environment when building.
+Offline tests cover validation, durable-enquiry failure handling, quote arithmetic, draft/version conflicts, send retries and leases, mail content, and payment verification. Provider calls and storage are mocked; these tests do not establish live delivery, bank settlement, or actual database locking. A build can read published testimonials from the configured database; use the intended environment when building.
 
 On Vercel, import the existing GoodyCleaning repository as its own project, configure its environment variables, deploy it, and attach the GoodyCleaning domains to that project. Configure the production origin before building so metadata and links resolve to the canonical domain.
 
 ## Booking and payment behavior
 
-Enquiry mode is the default. Customers submit their name, email, phone, service, and property size to `/api/enquiries`; postcode, preferred date, and message are optional. The endpoint sends a branded notification to the fixed support mailbox and then acknowledges the customer. It does not create an admin quote or database record. Customer acknowledgements include a request summary but exclude arbitrary free-text notes. The endpoint validates contact details, bounds request size, checks browser origin, and applies a honeypot and per-instance burst limit. Hosting-level limits can supplement that burst limit across instances. No prices or live payment form are shown. The instant checkout API rejects submissions while instant booking is disabled.
+Enquiry mode is the default. Customers submit their name, email, phone, service, and property size to `/api/enquiries`; postcode, preferred date, and message are optional. The endpoint saves a pending admin quote, sends its review link to support, then acknowledges the customer. Customer acknowledgements include a request summary but exclude arbitrary free-text notes. Input validation, request-size and origin checks, a honeypot, and a per-instance burst limit run before persistence. Hosting-level limits can supplement that burst limit across instances. No automatic prices or instant payment form are shown. The instant checkout API rejects submissions while instant booking is disabled.
 
-When `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true`, studios, one-bedroom homes, and two-bedroom homes use the price table in `src/lib/pricing.ts` and proceed to Revolut hosted checkout. Homes with three or more bedrooms and commercial properties request a custom quote. Admins can review requests and send payment links from `/admin`.
+The legacy `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` path uses the placeholder price table in `src/lib/pricing.ts` for smaller properties. It is separate from manual admin quotes and should remain disabled until an automatic tariff has been approved.
 
 Keep the flag false until the business has approved prices, coverage, and contact details, and the database, correct live Revolut account/key, signed webhook, and production email delivery are ready. The current price table is labelled as placeholder pricing. Do not expose it as a production tariff. Changing this public flag requires rebuilding the application.
 
@@ -117,9 +129,11 @@ Register the production Revolut webhook at:
 https://goodycleaning.co.uk/api/webhooks/revolut
 ```
 
-Subscribe to `ORDER_COMPLETED` and configure its signing secret. Payments are confirmed by verified webhooks, never by visiting the success page. The success page displays the recorded status and stays outside the sitemap with indexing disabled.
+Subscribe to `ORDER_COMPLETED` and configure the signing secret for this exact Cleaning endpoint. Payments are confirmed by fetching and verifying the provider's completed order against the saved Cleaning quote, amount, currency, and order identity. Visiting the success page alone never confirms a payment. The success page displays the recorded status and stays outside the sitemap with indexing disabled.
 
-Sandbox and production accounts use different API endpoints and signing secrets. Missing payment credentials fail in production; a development-only mock checkout is not payment confirmation. Production email also fails when `RESEND_API_KEY` is absent. Set a verified `MAIL_FROM`; the `onboarding@resend.dev` fallback is only suitable for development/testing.
+For production, configure `DATABASE_URL`, `AUTH_SECRET`, the verified support Gmail credentials, the intended live `REVOLUT_SECRET_KEY`, `REVOLUT_API_URL=https://merchant.revolut.com/api`, and the Cleaning endpoint's `REVOLUT_WEBHOOK_SECRET`. Sandbox and production use separate endpoints and webhook secrets. A generic `sk_` Merchant key must not be assumed to be a sandbox key; set the environment explicitly.
+
+**Shared GoodyVan merchant account:** before enabling live Cleaning payments, verify that GoodyVan's webhook ignores orders belonging to GoodyCleaning and cannot create a Van booking from an unknown order. It must check ownership against its own stored booking/order data before processing payment events. Keep the existing Van endpoint and its secret; register a separate Cleaning endpoint with its own signing secret. Configure and verify this ownership guard in GoodyVan before enabling shared live payments. This repository does not deploy or verify that separate application's configuration.
 
 ## Content before launch
 
