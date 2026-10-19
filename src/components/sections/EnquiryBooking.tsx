@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowUpRight, Check, Mail, MapPin, Phone, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { z } from "zod";
+import { ArrowUpRight, Check, CheckCircle2, Loader2, Mail, MapPin, Phone, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +23,21 @@ import {
   type PropertySize,
   type ServiceType,
 } from "@/lib/pricing";
-import { getBookingMinDate } from "@/lib/validations";
+import { enquirySchema, getBookingMinDate, type EnquiryFormData } from "@/lib/validations";
+
+type EnquiryFormInput = z.input<typeof enquirySchema>;
+type SubmissionStatus = {
+  type: "success" | "error";
+  message: string;
+  showContact?: boolean;
+} | null;
+
+const enquiryFields = ["name", "email", "phone", "serviceType", "propertySize", "postcode", "preferredDate", "message"] as const;
+const submissionError = "We couldn't confirm your enquiry was sent. Your details are still here. Please try again or call our cleaning team.";
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? <p id={id} className="text-xs font-medium text-red-600">{message}</p> : null;
+}
 
 function isServiceType(value: unknown): value is ServiceType {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(SERVICE_LABELS, value);
@@ -34,46 +51,102 @@ const inputClassName = "rounded-xl border-[#e1e6e9] bg-[#fbfcfa] text-[#102c43] 
 const selectClassName = `${inputClassName} text-left focus:ring-[#2457e8]/40 [&>span]:min-w-0 [&>span]:truncate [&>svg]:shrink-0`;
 
 export function EnquiryBooking() {
-  const [serviceType, setServiceType] = useState<ServiceType>("deep");
-  const [propertySize, setPropertySize] = useState<PropertySize>("1bed");
-  const [postcode, setPostcode] = useState("");
-  const [preferredDate, setPreferredDate] = useState("");
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<SubmissionStatus>(null);
   const [minimumDate] = useState(getBookingMinDate);
+  const submissionInFlight = useRef(false);
+  const form = useForm<EnquiryFormInput, unknown, EnquiryFormData>({
+    resolver: zodResolver(enquirySchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      serviceType: "deep",
+      propertySize: "1bed",
+      postcode: "",
+      preferredDate: "",
+      message: "",
+      website: "",
+    },
+  });
+  const serviceType = useWatch({ control: form.control, name: "serviceType" });
+  const propertySize = useWatch({ control: form.control, name: "propertySize" });
+  const { errors, isSubmitting } = form.formState;
 
   useEffect(() => {
     const handler = (event: Event) => {
+      if (submissionInFlight.current) return;
       const detail: unknown = (event as CustomEvent).detail;
       const selection = typeof detail === "string" ? { service: detail } : detail;
       if (!selection || typeof selection !== "object") return;
       if ("service" in selection && isServiceType(selection.service)) {
-        setServiceType(selection.service);
+        form.setValue("serviceType", selection.service, { shouldDirty: true, shouldValidate: true });
       }
       if ("propertySize" in selection && isPropertySize(selection.propertySize)) {
-        setPropertySize(selection.propertySize);
+        form.setValue("propertySize", selection.propertySize, { shouldDirty: true, shouldValidate: true });
       }
     };
     window.addEventListener("select-service", handler);
     return () => window.removeEventListener("select-service", handler);
-  }, []);
+  }, [form]);
 
-  const subject = `GoodyCleaning quote: ${SERVICE_LABELS[serviceType]}`;
-  const body = [
-    "Hello GoodyCleaning,",
-    "",
-    "I'd like a cleaning quote for my space.",
-    `Service: ${SERVICE_LABELS[serviceType]}`,
-    `Property size: ${PROPERTY_SIZE_LABELS[propertySize]}`,
-    ...(postcode.trim() ? [`Postcode: ${postcode.trim()}`] : []),
-    ...(preferredDate ? [`Preferred date: ${preferredDate} (subject to availability)`] : []),
-    ...(message.trim() ? ["", "Additional details:", message.trim()] : []),
-    "",
-    "Please confirm the price, availability, and cleaning details.",
-    "",
-    "Name: ",
-    "Contact number: ",
-  ].join("\n");
-  const enquiryHref = `mailto:${siteConfig.contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  async function onSubmit(data: EnquiryFormData) {
+    setStatus(null);
+
+    try {
+      const response = await fetch("/api/enquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const payload: unknown = await response.json().catch(() => null);
+      const result = payload && typeof payload === "object"
+        ? payload as { success?: unknown; error?: unknown; fieldErrors?: unknown }
+        : {};
+
+      if (!response.ok || result.success !== true) {
+        if (response.status === 400 && result.fieldErrors && typeof result.fieldErrors === "object") {
+          const fieldErrors = result.fieldErrors as Record<string, unknown>;
+          let focusFirstError = true;
+          for (const field of enquiryFields) {
+            const messages = fieldErrors[field];
+            const message = typeof messages === "string"
+              ? messages
+              : Array.isArray(messages) && typeof messages[0] === "string" ? messages[0] : null;
+            if (message) {
+              form.setError(field, { type: "server", message }, { shouldFocus: focusFirstError });
+              focusFirstError = false;
+            }
+          }
+        }
+        setStatus({
+          type: "error",
+          message: response.status === 400
+            ? typeof result.error === "string" ? result.error : "Please check your details and try again."
+            : submissionError,
+          showContact: response.status !== 400,
+        });
+        return;
+      }
+
+      setStatus({
+        type: "success",
+        message: "Thank you — your enquiry has been sent. Our team will be in touch to discuss your quote and confirm availability and cleaning details.",
+      });
+      form.reset({
+        name: "",
+        email: "",
+        phone: "",
+        serviceType: data.serviceType,
+        propertySize: data.propertySize,
+        postcode: "",
+        preferredDate: "",
+        message: "",
+        website: "",
+      });
+    } catch {
+      setStatus({ type: "error", message: submissionError, showContact: true });
+    }
+  }
 
   return (
     <section id="booking" className="section-shell section-pad scroll-mt-24 text-[#102c43]" aria-labelledby="booking-title">
@@ -131,52 +204,104 @@ export function EnquiryBooking() {
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f0f4ff] text-[#2457e8]"><Sparkles className="h-5 w-5" aria-hidden="true" /></span>
           </div>
 
-          <fieldset className="min-w-0 space-y-5">
-            <legend className="sr-only">Cleaning enquiry details</legend>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-service" className="text-xs font-semibold text-[#102c43]">What needs cleaning?</Label>
-                <Select value={serviceType} onValueChange={(value) => { if (isServiceType(value)) setServiceType(value); }}>
-                  <SelectTrigger id="enquiry-service" className={selectClassName}><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(SERVICE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
-                </Select>
+          <form
+            noValidate
+            aria-busy={isSubmitting}
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (submissionInFlight.current) return;
+              submissionInFlight.current = true;
+              try {
+                await form.handleSubmit(onSubmit, () => setStatus({ type: "error", message: "Please check the highlighted details before sending your enquiry." }))(event);
+              } finally {
+                submissionInFlight.current = false;
+              }
+            }}
+          >
+            <fieldset disabled={isSubmitting} className="min-w-0 space-y-5 disabled:opacity-70">
+              <legend className="sr-only">Cleaning enquiry details</legend>
+              <p className="text-xs text-[#687781]">All fields are required unless marked optional.</p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-name" className="text-xs font-semibold text-[#102c43]">Full name</Label>
+                  <Input id="enquiry-name" autoComplete="name" required maxLength={120} placeholder="Your name" className={inputClassName} aria-invalid={!!errors.name} aria-describedby={errors.name ? "enquiry-name-error" : undefined} {...form.register("name")} />
+                  <FieldError id="enquiry-name-error" message={errors.name?.message} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-email" className="text-xs font-semibold text-[#102c43]">Email address</Label>
+                  <Input id="enquiry-email" type="email" autoComplete="email" required maxLength={254} placeholder="you@example.com" className={inputClassName} aria-invalid={!!errors.email} aria-describedby={errors.email ? "enquiry-email-error" : undefined} {...form.register("email")} />
+                  <FieldError id="enquiry-email-error" message={errors.email?.message} />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="enquiry-size" className="text-xs font-semibold text-[#102c43]">Size of your space</Label>
-                <Select value={propertySize} onValueChange={(value) => { if (isPropertySize(value)) setPropertySize(value); }}>
-                  <SelectTrigger id="enquiry-size" className={selectClassName}><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(PROPERTY_SIZE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label htmlFor="enquiry-phone" className="text-xs font-semibold text-[#102c43]">Phone number</Label>
+                <Input id="enquiry-phone" type="tel" autoComplete="tel" required maxLength={40} placeholder="Your contact number" className={inputClassName} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "enquiry-phone-error" : undefined} {...form.register("phone")} />
+                <FieldError id="enquiry-phone-error" message={errors.phone?.message} />
               </div>
-            </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-service" className="text-xs font-semibold text-[#102c43]">What needs cleaning?</Label>
+                  <Select name="serviceType" required disabled={isSubmitting} value={serviceType} onValueChange={(value) => { if (isServiceType(value)) form.setValue("serviceType", value, { shouldDirty: true, shouldValidate: true }); }}>
+                    <SelectTrigger id="enquiry-service" className={selectClassName} aria-invalid={!!errors.serviceType} aria-describedby={errors.serviceType ? "enquiry-service-error" : undefined}><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(SERVICE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <FieldError id="enquiry-service-error" message={errors.serviceType?.message} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-size" className="text-xs font-semibold text-[#102c43]">Size of your space</Label>
+                  <Select name="propertySize" required disabled={isSubmitting} value={propertySize} onValueChange={(value) => { if (isPropertySize(value)) form.setValue("propertySize", value, { shouldDirty: true, shouldValidate: true }); }}>
+                    <SelectTrigger id="enquiry-size" className={selectClassName} aria-invalid={!!errors.propertySize} aria-describedby={errors.propertySize ? "enquiry-size-error" : undefined}><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(PROPERTY_SIZE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <FieldError id="enquiry-size-error" message={errors.propertySize?.message} />
+                </div>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-postcode" className="text-xs font-semibold text-[#102c43]">Postcode <span className="font-normal text-[#687781]">(optional)</span></Label>
+                  <Input id="enquiry-postcode" autoComplete="postal-code" placeholder="e.g. SW1A 1AA" maxLength={12} className={inputClassName} aria-invalid={!!errors.postcode} aria-describedby={errors.postcode ? "enquiry-postcode-error" : undefined} {...form.register("postcode")} />
+                  <FieldError id="enquiry-postcode-error" message={errors.postcode?.message} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="enquiry-date" className="text-xs font-semibold text-[#102c43]">Preferred date <span className="font-normal text-[#687781]">(optional)</span></Label>
+                  <Input id="enquiry-date" type="date" min={minimumDate} className={inputClassName} aria-invalid={!!errors.preferredDate} aria-describedby={errors.preferredDate ? "enquiry-date-note enquiry-date-error" : "enquiry-date-note"} {...form.register("preferredDate")} />
+                  <FieldError id="enquiry-date-error" message={errors.preferredDate?.message} />
+                </div>
+              </div>
+              <p id="enquiry-date-note" className="-mt-2 text-xs leading-relaxed text-[#687781]">We&apos;ll confirm availability and agree a date with you.</p>
+
               <div className="space-y-2">
-                <Label htmlFor="enquiry-postcode" className="text-xs font-semibold text-[#102c43]">Postcode <span className="font-normal text-[#687781]">(optional)</span></Label>
-                <Input id="enquiry-postcode" autoComplete="postal-code" placeholder="e.g. SW1A 1AA" maxLength={12} value={postcode} onChange={(event) => setPostcode(event.target.value)} className={inputClassName} />
+                <Label htmlFor="enquiry-message" className="text-xs font-semibold text-[#102c43]">Anything else we should know? <span className="font-normal text-[#687781]">(optional)</span></Label>
+                <Textarea id="enquiry-message" rows={4} maxLength={5000} placeholder="Tell us about your space, any special requests, or access details…" className={`${inputClassName} min-h-28 resize-y`} aria-invalid={!!errors.message} aria-describedby={errors.message ? "enquiry-message-error" : undefined} {...form.register("message")} />
+                <FieldError id="enquiry-message-error" message={errors.message?.message} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="enquiry-date" className="text-xs font-semibold text-[#102c43]">Preferred date <span className="font-normal text-[#687781]">(optional)</span></Label>
-                <Input id="enquiry-date" type="date" min={minimumDate} value={preferredDate} onChange={(event) => setPreferredDate(event.target.value)} className={inputClassName} aria-describedby="enquiry-date-note" />
+              <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
+                <Label htmlFor="enquiry-website">Website</Label>
+                <Input id="enquiry-website" tabIndex={-1} autoComplete="off" {...form.register("website")} />
               </div>
-            </div>
-            <p id="enquiry-date-note" className="-mt-2 text-xs leading-relaxed text-[#687781]">We&apos;ll confirm availability and agree a date with you.</p>
 
-            <div className="space-y-2">
-              <Label htmlFor="enquiry-message" className="text-xs font-semibold text-[#102c43]">Anything else we should know? <span className="font-normal text-[#687781]">(optional)</span></Label>
-              <Textarea id="enquiry-message" rows={4} maxLength={2000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Tell us about your space, any special requests, or access details…" className={`${inputClassName} min-h-28 resize-y`} />
-            </div>
-          </fieldset>
+              <div className="rounded-2xl bg-[#f3f6ed] px-5 py-4">
+                <p className="text-sm font-semibold">A quote built around your space</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#687781]">Our team will review your enquiry and confirm your price, availability, and cleaning details before you book.</p>
+              </div>
 
-          <div className="my-6 rounded-2xl bg-[#f3f6ed] px-5 py-4">
-            <p className="text-sm font-semibold">A quote built around your space</p>
-            <p className="mt-1 text-xs leading-relaxed text-[#687781]">Our team will review your enquiry and confirm your price, availability, and cleaning details before you book.</p>
-          </div>
+              <Button type="submit" disabled={isSubmitting} size="lg" className="group h-14 w-full bg-[#2457e8] px-5 text-white shadow-none transition-all hover:bg-[#1948cf] hover:shadow-lg hover:shadow-[#2457e8]/15 focus-visible:ring-[#2457e8]/40 motion-safe:hover:-translate-y-0.5">
+                {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />Sending your enquiry…</> : <>Send enquiry<ArrowUpRight className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5" aria-hidden="true" /></>}
+              </Button>
+            </fieldset>
 
-          <Button asChild size="lg" className="group h-14 w-full bg-[#2457e8] px-5 text-white shadow-none transition-all hover:bg-[#1948cf] hover:shadow-lg hover:shadow-[#2457e8]/15 focus-visible:ring-[#2457e8]/40 motion-safe:hover:-translate-y-0.5">
-            <a href={enquiryHref} aria-describedby="enquiry-email-note">Email us for a quote<ArrowUpRight className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5" aria-hidden="true" /></a>
-          </Button>
-          <p id="enquiry-email-note" className="mt-4 text-center text-xs leading-relaxed text-[#687781]">Opens your email app with your details ready to review and send.</p>
+            {status && (
+              <div role={status.type === "error" ? "alert" : "status"} className={`mt-5 rounded-xl p-4 text-sm leading-relaxed ${status.type === "error" ? "bg-red-50 text-red-700" : "bg-[#edf6df] text-[#375a20]"}`}>
+                <div className="flex items-start gap-2.5">
+                  {status.type === "success" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
+                  <p>{status.message}</p>
+                </div>
+                {status.showContact && <p className="mt-2"><a href={`tel:${siteConfig.contact.mobileE164}`} className="font-semibold underline underline-offset-4">Call {siteConfig.contact.mobile}</a><span className="mx-1">or</span><a href={`tel:${siteConfig.contact.phone.replace(/\s/g, "")}`} className="font-semibold underline underline-offset-4">{siteConfig.contact.phone}</a>.</p>}
+              </div>
+            )}
+          </form>
         </div>
       </div>
     </section>

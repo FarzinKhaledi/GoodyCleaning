@@ -38,7 +38,7 @@ const enquiryQuestions = [
   {
     question: "How do I get a quote?",
     answer:
-      `Choose your service and property size in the enquiry form, then add any useful details. Select “Email us for a quote” to open a draft in your email app, ready to review and send. You can also call the cleaning team on ${siteConfig.contact.mobile}. The team will confirm your price and cleaning details before you book.`,
+      `Choose your service and property size, add your name, email address, and phone number, then select “Send enquiry”. Your request goes directly to our team. You can also call us on ${siteConfig.contact.mobile}. The team will confirm your price and cleaning details before you book.`,
   },
   {
     question: "Can I request specific cleaning products?",
@@ -53,7 +53,7 @@ const enquiryQuestions = [
   {
     question: "What about a larger home or an office?",
     answer:
-      "Select three bedrooms, four or more bedrooms, or commercial / office in the enquiry form. Tell us about the space and what you need, then email your enquiry. The team will review the details and provide a tailored quote.",
+      "Select three bedrooms, four or more bedrooms, or commercial / office in the enquiry form. Tell us about the space and what you need, then send your enquiry. The team will review the details and provide a tailored quote.",
   },
 ];
 

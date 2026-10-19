@@ -17,7 +17,7 @@ const steps = [
     title: "Leave the details to us.",
     description: siteConfig.booking.instantEnabled
       ? "Book through secure checkout or send a quote request. Tell us your preferred date and our team will confirm the details with you."
-      : "Email your quote request or call our cleaning team. We will confirm the price, availability, and cleaning details with you.",
+      : "Send your enquiry through the form or call our cleaning team. We will confirm the price, availability, and cleaning details with you.",
     colour: "bg-[#2457e8] text-white",
   },
   {

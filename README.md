@@ -2,9 +2,9 @@
 
 GoodyCleaning is a standalone Next.js application for carpet cleaning, deep cleaning, and before/after tenancy cleaning. Its homepage includes a service and property selector, responsive service cards, enquiry actions, FAQs, customer stories, and animations that respect reduced-motion preferences.
 
-The initial launch uses **enquiry mode**. Customers can open an email quote draft in their email app or use the phone links without a database, payment provider, or email delivery service. No tariff is displayed before prices are approved. The full instant-booking form stays hidden unless `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` is set before building.
+The initial launch uses **enquiry mode**. Customers submit a quote request on the website or use the phone links. The form requires a name, valid email address, and phone number and sends the full enquiry to **support@goodyvan.com** through Gmail OAuth. This flow needs a configured email connection, but no database or payment provider. No tariff is displayed before prices are approved. The full instant-booking form stays hidden unless `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` is set before building.
 
-Launch contact details: **0800 001 6171**, direct mobile **+44 7771 114041**, and **support@goodyvan.com**. An email draft is sent only when the customer sends it from their email app.
+Launch contact details: **0800 001 6171**, direct mobile **+44 7771 114041**, and **support@goodyvan.com**. Enquiry success appears only after Gmail accepts the message. Failures preserve the customer's details and offer a retry or phone call.
 
 The application has its own [GitHub repository](https://github.com/FarzinKhaledi/GoodyCleaning). GoodyVan remains a separate application.
 
@@ -43,7 +43,7 @@ Generate a private Auth.js secret with `openssl rand -base64 32`. Keep `NEXT_PUB
 npm run dev
 ```
 
-Open [the local site](http://localhost:3000) or [admin login](http://localhost:3000/admin/login). The homepage and enquiry actions work without backend services. Keep `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=false` for this mode. The complete booking backend and offline tests remain available locally; booking submissions, quote management, and admin authentication require their configured services.
+Open [the local site](http://localhost:3000) or [admin login](http://localhost:3000/admin/login). The homepage renders without backend services; enquiry submission needs the Gmail OAuth variables below. Missing email configuration returns an error without claiming the enquiry was sent. Keep `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=false` for this mode. The complete booking backend and offline tests remain available locally; instant bookings, admin quote management, and admin authentication require their configured services.
 
 ## Environment variables
 
@@ -53,13 +53,16 @@ Configure private production values in the hosting project, separately from deve
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Public site origin; use `https://goodycleaning.co.uk` in production. Used in metadata, email links, and payment redirects. |
 | `AUTH_URL` | Authentication origin; use `https://goodycleaning.co.uk` in production. |
-| `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED` | Defaults to `false`. Enquiry mode shows email quote drafts and phone links. Set `true` before building only after prices and all booking services are approved and ready. |
+| `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED` | Defaults to `false`. Enquiry mode shows the website enquiry form and phone links. Set `true` before building only after prices and all booking services are approved and ready. |
+| `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Server-only OAuth credentials for enquiry delivery, with Gmail send permission. |
+| `GMAIL_SENDER` | Authorized sending mailbox or verified send-as address. Customer email becomes Reply-To. |
+| `GMAIL_USER` | Optional sender fallback when `GMAIL_SENDER` is empty. |
 | `AUTH_SECRET` | Private, randomly generated Auth.js secret. |
 | `DATABASE_URL` | Dedicated GoodyCleaning Postgres database connection string. |
 | `REVOLUT_SECRET_KEY` | Merchant API secret for the intended sandbox or live account. `REVOLUT_API_KEY` is accepted as a legacy alias. |
 | `REVOLUT_API_URL` | Optional explicit API base. Use the sandbox or production endpoint for the same environment as the key. |
 | `REVOLUT_WEBHOOK_SECRET` | Signing secret from the webhook registered in that Revolut environment. |
-| `RESEND_API_KEY` | Required for production email delivery. |
+| `RESEND_API_KEY` | Required for the separate instant-booking/admin transactional email workflows. |
 | `MAIL_FROM` | Sender on a domain verified in Resend, such as `GoodyCleaning <hello@goodycleaning.co.uk>`. |
 | `ADMIN_EMAIL` | Mailbox for new quote requests and payment alerts. |
 | `ADMIN_EMAIL_LOGIN` | Explicit email for the admin account created by the seed command. |
@@ -98,7 +101,7 @@ On Vercel, import the existing GoodyCleaning repository as its own project, conf
 
 ## Booking and payment behavior
 
-Enquiry mode is the default. Customers can prepare an email quote request or call the team; no prices or live payment form are shown. The instant checkout API rejects submissions while instant booking is disabled.
+Enquiry mode is the default. Customers submit their name, email, phone, service, and property size to `/api/enquiries`; postcode, preferred date, and message are optional. The endpoint sends directly to the fixed support mailbox and does not create an admin quote or database record. It validates contact details, bounds request size, checks browser origin, and applies a honeypot and per-instance burst limit. Hosting-level limits can supplement that burst limit across instances. No prices or live payment form are shown. The instant checkout API rejects submissions while instant booking is disabled.
 
 When `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true`, studios, one-bedroom homes, and two-bedroom homes use the price table in `src/lib/pricing.ts` and proceed to Revolut hosted checkout. Homes with three or more bedrooms and commercial properties request a custom quote. Admins can review requests and send payment links from `/admin`.
 

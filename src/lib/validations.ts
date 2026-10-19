@@ -50,6 +50,14 @@ export const bookingSchema = z.object({
 
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
+export const enquirySchema = bookingSchema.extend({
+  phone: bookingSchema.shape.phone.max(40, "Please enter a valid phone number"),
+  postcode: z.string().trim().max(12, "Please enter a valid postcode").optional(),
+  website: z.string().max(0, "Unable to submit this enquiry").optional(),
+});
+
+export type EnquiryFormData = z.infer<typeof enquirySchema>;
+
 export const quotePriceSchema = z.object({
   priceCents: z.coerce.number().int("Price must be in whole pence").min(100, "Price must be at least £1").max(2147483647),
 });
