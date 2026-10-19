@@ -12,6 +12,7 @@ import { FAQ } from "@/components/sections/FAQ";
 import { Footer } from "@/components/sections/Footer";
 import { Toaster } from "@/components/ui/use-toast";
 import { getTestimonialContent } from "@/lib/data/testimonials";
+import atmosphere from "@/components/atmosphere/atmosphere.module.css";
 
 export const metadata: Metadata = {
   title: { absolute: `${siteConfig.name} | Less cleaning. More living.` },
@@ -23,7 +24,7 @@ export default async function HomePage() {
   const { testimonials, isExample } = await getTestimonialContent();
 
   return (
-    <div className="marketing-page">
+    <div className={`marketing-page ${atmosphere.canvas}`}>
       <a href="#main-content" className="skip-link">Skip to content</a>
       <Header />
       <PageMotion>

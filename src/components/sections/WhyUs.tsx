@@ -35,7 +35,7 @@ export function WhyUs() {
       <div className="section-shell">
         <div
           data-reveal
-          className="relative isolate overflow-hidden rounded-[2rem] bg-[#102c43] px-7 py-12 text-white sm:px-12 sm:py-16 lg:px-16 lg:py-20"
+          className="brand-dark-panel relative isolate overflow-hidden rounded-[2rem] bg-[#102c43] px-7 py-12 text-white sm:px-12 sm:py-16 lg:px-16 lg:py-20"
         >
           <div
             aria-hidden="true"

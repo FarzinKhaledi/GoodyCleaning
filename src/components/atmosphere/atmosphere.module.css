@@ -1,0 +1,232 @@
+.canvas {
+  position: relative;
+  isolation: isolate;
+  background: #f7f8f4;
+}
+
+/* One continuous material palette, with quiet areas for the copy and forms. */
+.canvas :global(.site-header) {
+  background: linear-gradient(110deg, #fafbf8ed, #f7f9f5ed);
+  border-bottom-color: #102c430b;
+}
+
+.canvas :global(.hero-section) {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background: linear-gradient(180deg, #f7f8f4 0%, #f7f9f6 72%, #f7f8f4 100%);
+}
+
+.canvas :global(.hero-section > .section-shell),
+.canvas :global(.hero-bottom-note) {
+  position: relative;
+  z-index: 1;
+}
+
+.heroAtmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.blueLight {
+  position: absolute;
+  top: -260px;
+  right: -220px;
+  width: min(1180px, 90vw);
+  height: 1020px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #c3d9f8b3 0%, #dfe9fa91 34%, #edf3fb40 57%, transparent 72%);
+  animation: light-drift 22s ease-in-out infinite alternate;
+}
+
+.limeLight {
+  position: absolute;
+  top: 370px;
+  left: -320px;
+  width: 1100px;
+  height: 650px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #d9edb77d, #edf4d854 38%, transparent 70%);
+}
+
+.paperArc {
+  position: absolute;
+  top: 360px;
+  right: -280px;
+  width: 1120px;
+  height: 1000px;
+  border: 1px solid #ffffffc7;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffffff70, #ffffff0a 47%, transparent 65%);
+  box-shadow: -30px -12px 80px -60px #6784b52b;
+  transform: rotate(-25deg);
+}
+
+.contours {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: #648bc82c;
+  mask-image: linear-gradient(180deg, #0009, #000 65%, transparent);
+}
+
+.dotField {
+  position: absolute;
+  top: 110px;
+  left: 39%;
+  width: 135px;
+  height: 180px;
+  background-image: radial-gradient(#2457e82b 0.7px, transparent 0.9px);
+  background-size: 13px 13px;
+  mask-image: radial-gradient(ellipse, #0008, transparent 70%);
+  transform: rotate(-12deg);
+}
+
+.lightGlint {
+  position: absolute;
+  top: 95px;
+  right: 4.5%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d6f28b;
+  box-shadow: 0 0 0 6px #d6f28b26, 0 0 0 13px #d6f28b0d;
+}
+
+.canvas :global(.hero-intro) {
+  background: #ffffff73;
+  border-color: #ffffff;
+  box-shadow: 0 3px 12px #102c4304;
+}
+
+.canvas :global(.hero-photo) {
+  box-shadow: 0 35px 75px -35px #294e702e, 0 0 0 1px #ffffffa6;
+}
+
+.canvas :global(.quick-booking) {
+  background: linear-gradient(135deg, #fffffff5, #ffffffeb);
+  border-color: #ffffff;
+  box-shadow: 0 18px 55px -25px #193e6329, 0 2px 5px #193e6304;
+}
+
+.canvas :global(#services) {
+  position: relative;
+  isolation: isolate;
+  background: radial-gradient(ellipse at 5% 65%, #dce8f872, transparent 54%),
+    radial-gradient(ellipse at 95% 100%, #eaf0db66, transparent 47%);
+}
+
+.canvas :global(.service-card) {
+  border-color: #ffffff;
+  box-shadow: 0 10px 30px -20px #28476735, 0 0 0 1px #102c4308;
+}
+
+.canvas :global(#how-it-works) {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  margin-block: 22px;
+  padding-inline: 38px;
+  border: 1px solid #ffffff;
+  border-radius: 36px;
+  background: radial-gradient(ellipse at 15% 0%, #e5efce78, transparent 65%),
+    linear-gradient(135deg, #ffffffe0, #f1f5f0b3);
+  box-shadow: 0 20px 60px -48px #102c4333;
+}
+
+.canvas :global(#how-it-works)::after {
+  position: absolute;
+  top: -360px;
+  right: -180px;
+  z-index: -1;
+  width: 620px;
+  height: 620px;
+  border: 1px solid #c8d8b54d;
+  border-radius: 50%;
+  box-shadow: 0 0 0 38px #dce7d221, 0 0 0 78px #dce7d20f;
+  content: "";
+  pointer-events: none;
+}
+
+.canvas :global(.brand-dark-panel) {
+  background-image: radial-gradient(ellipse at 95% 8%, #2457e852, transparent 64%),
+    radial-gradient(ellipse at 0% 100%, #297e6e29, transparent 60%);
+  box-shadow: 0 26px 60px -40px #102c4380;
+}
+
+.canvas :global(#booking) {
+  position: relative;
+  isolation: isolate;
+}
+
+.canvas :global(#booking)::before {
+  position: absolute;
+  inset: 20px -34px;
+  z-index: -1;
+  border: 1px solid #ffffffd9;
+  border-radius: 42px;
+  background: radial-gradient(ellipse at 0% 70%, #e1edc987, transparent 58%),
+    radial-gradient(ellipse at 100% 20%, #e2ebfa85, transparent 60%),
+    linear-gradient(135deg, #fafcf7b3, #ffffff80);
+  content: "";
+  pointer-events: none;
+}
+
+.canvas :global(#faq) {
+  background: linear-gradient(180deg, transparent, #ffffff6b);
+}
+
+.canvas :global(footer) {
+  position: relative;
+  isolation: isolate;
+  background-image: radial-gradient(ellipse at 0% 0%, #2457e840, transparent 62%),
+    linear-gradient(125deg, #102c43, #102c43 55%, #12494b66);
+}
+
+.canvas :global(footer)::before {
+  position: absolute;
+  top: -410px;
+  right: -250px;
+  z-index: -1;
+  width: 1000px;
+  height: 1000px;
+  border: 1px solid #d7e6ff0d;
+  border-radius: 50%;
+  box-shadow: 0 0 0 48px #d7e6ff05, 0 0 0 98px #d7e6ff03;
+  content: "";
+  pointer-events: none;
+}
+
+@keyframes light-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-28px, 18px, 0) scale(1.04); }
+}
+
+@media (max-width: 900px) {
+  .blueLight { top: 320px; right: -230px; width: 1000px; height: 1000px; }
+  .limeLight { top: -140px; left: -420px; height: 780px; }
+  .paperArc { top: 690px; right: -500px; }
+  .contours { width: 160%; left: -45%; opacity: 0.7; }
+  .dotField { display: none; }
+  .lightGlint { top: 590px; right: 7%; }
+  .canvas :global(#booking)::before { inset-inline: -15px; }
+}
+
+@media (max-width: 640px) {
+  .blueLight { top: 300px; right: -260px; width: 800px; height: 800px; opacity: 0.75; }
+  .limeLight { top: -130px; left: -340px; width: 800px; height: 680px; opacity: 0.6; }
+  .paperArc { top: 520px; right: -650px; opacity: 0.75; }
+  .contours { width: 220%; left: -95%; opacity: 0.5; }
+  .lightGlint { display: none; }
+  .canvas :global(#how-it-works) { border-radius: 26px; padding-inline: 20px; margin-block: 12px; }
+  .canvas :global(#booking)::before { inset: 5px -10px; border-radius: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blueLight { animation: none; }
+}

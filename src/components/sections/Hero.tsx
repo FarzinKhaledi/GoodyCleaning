@@ -6,6 +6,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, HeartHandshake
 import { getPrice, PROPERTY_SIZE_LABELS, SERVICE_LABELS, type PropertySize, type ServiceType } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
+import { BrandAtmosphere } from "@/components/atmosphere/BrandAtmosphere";
 
 export function Hero() {
   const [service, setService] = useState<ServiceType>("deep");
@@ -19,6 +20,7 @@ export function Hero() {
 
   return (
     <section id="hero" className="hero-section scroll-mt-24">
+      <BrandAtmosphere />
       <div className="section-shell">
         <div className="hero-grid">
           <div className="hero-copy">
