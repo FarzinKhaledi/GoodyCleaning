@@ -1,91 +1,122 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, Quote, Star } from "lucide-react";
 import type { Testimonial } from "@/lib/db/schema";
 
 interface TestimonialsProps {
   testimonials: Testimonial[];
+  isExample?: boolean;
 }
 
-export function Testimonials({ testimonials }: TestimonialsProps) {
-  const [current, setCurrent] = useState(0);
+export function Testimonials({ testimonials, isExample = true }: TestimonialsProps) {
+  const [page, setPage] = useState(0);
 
-  useEffect(() => {
-    if (testimonials.length === 0) return;
-    const timer = setInterval(() => {
-      setCurrent((c) => (c + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [testimonials.length]);
+  if (testimonials.length === 0) return null;
 
-  if (testimonials.length === 0) {
-    return null;
-  }
-
-  const prev = () =>
-    setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length);
-  const next = () => setCurrent((c) => (c + 1) % testimonials.length);
-
-  const t = testimonials[current];
+  const pageSize = 3;
+  const pageCount = Math.ceil(testimonials.length / pageSize);
+  const currentPage = page % pageCount;
+  const visibleTestimonials = testimonials.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize,
+  );
 
   return (
-    <section id="testimonials" className="relative px-6 py-32">
-      <div className="relative z-10 mx-auto max-w-4xl">
-        <div className="mb-16 text-center">
-          <h2 className="text-4xl font-bold text-white sm:text-5xl">
-            What Our Clients Say
-          </h2>
-          <p className="mt-4 text-lg text-white/70">
-            Real reviews from real customers
-          </p>
+    <section id="testimonials" className="section-pad scroll-mt-24">
+      <div className="section-shell">
+        <div
+          data-reveal
+          className="mb-10 flex flex-col items-start justify-between gap-7 sm:flex-row sm:items-end"
+        >
+          <div>
+            <span className="eyebrow">
+              {isExample ? "A glimpse of the Goody experience" : "The good word"}
+            </span>
+            <h2 className="section-heading mt-4 max-w-2xl text-[#102c43]">
+              {isExample ? "Fresh spaces. Happy stories." : "A little love for a lovely clean."}
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#102c43]/65">
+              {isExample
+                ? "Example customer stories to show the kinds of cleans we offer."
+                : "Small details, fresh starts, and the difference a good clean makes."}
+            </p>
+          </div>
+
+          {pageCount > 1 && (
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((value) => (value - 1 + pageCount) % pageCount)}
+                aria-label="Show previous customer stories"
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-[#102c43]/15 text-[#102c43] transition-colors hover:border-[#2457e8] hover:bg-[#2457e8] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2457e8]"
+              >
+                <ArrowLeft aria-hidden="true" className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((value) => (value + 1) % pageCount)}
+                aria-label="Show next customer stories"
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-[#102c43]/15 text-[#102c43] transition-colors hover:border-[#2457e8] hover:bg-[#2457e8] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2457e8]"
+              >
+                <ArrowRight aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </div>
+          )}
         </div>
 
-        <div
-          className="relative rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur md:p-12"
-          aria-live="polite"
-        >
-          <div className="mb-4 flex gap-1">
-            {Array.from({ length: t.rating }).map((_, i) => (
-              <Star key={i} className="h-5 w-5 fill-mint text-mint" />
+        <div data-reveal>
+          <div className="grid gap-5 md:grid-cols-3" aria-live="polite" aria-atomic="true">
+            {visibleTestimonials.map((testimonial, index) => (
+              <figure
+                key={testimonial.id}
+                className={`flex min-h-[315px] flex-col rounded-[1.5rem] p-7 transition-shadow duration-300 hover:shadow-[0_12px_40px_-20px_rgba(16,44,67,0.2)] lg:p-8 ${
+                  index === 1
+                    ? "border border-[#d6f28b] bg-[#eaf4d6]"
+                    : "border border-[#102c43]/8 bg-white"
+                }`}
+              >
+                <div className="mb-7 flex items-center justify-between">
+                  <span className="flex gap-1" aria-label={`${testimonial.rating} out of 5 stars`}>
+                    {Array.from({ length: Math.max(0, Math.min(5, Math.round(testimonial.rating))) }).map((_, i) => (
+                      <Star key={i} aria-hidden="true" className="h-3.5 w-3.5 fill-[#2457e8] text-[#2457e8]" />
+                    ))}
+                  </span>
+                  <Quote aria-hidden="true" className="h-6 w-6 text-[#102c43]/20" strokeWidth={1.5} />
+                </div>
+                <blockquote className="flex-1 text-[17px] leading-[1.75] font-medium tracking-[-0.015em] text-[#102c43]">
+                  &ldquo;{testimonial.message}&rdquo;
+                </blockquote>
+                <figcaption className="mt-7 flex items-center justify-between gap-3 border-t border-[#102c43]/10 pt-5">
+                  <span className="text-sm font-semibold text-[#102c43]">{testimonial.name}</span>
+                  <span className="text-xs text-[#102c43]/50">
+                    {isExample ? "Example review" : "Customer review"}
+                  </span>
+                </figcaption>
+              </figure>
             ))}
           </div>
-          <blockquote className="mb-6 text-xl text-white/90 md:text-2xl">
-            &ldquo;{t.message}&rdquo;
-          </blockquote>
-          <p className="font-semibold text-mint">{t.name}</p>
 
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <Button variant="ghost" size="icon" onClick={prev} aria-label="Previous review">
-              <ChevronLeft className="h-5 w-5 text-white" />
-            </Button>
-            <div className="flex gap-2">
-              {testimonials.map((_, i) => (
+          {pageCount > 1 && (
+            <div className="mt-7 flex items-center justify-center gap-2">
+              {Array.from({ length: pageCount }).map((_, index) => (
                 <button
-                  key={i}
-                  className={`h-2 rounded-full transition-all ${
-                    i === current ? "w-8 bg-mint" : "w-2 bg-white/30"
-                  }`}
-                  onClick={() => setCurrent(i)}
-                  aria-label={`Go to review ${i + 1}`}
-                />
+                  key={index}
+                  type="button"
+                  aria-label={`Show customer stories page ${index + 1}`}
+                  aria-current={currentPage === index ? "true" : undefined}
+                  onClick={() => setPage(index)}
+                  className="flex h-7 min-w-7 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2457e8]"
+                >
+                  <span className={`h-1.5 rounded-full transition-all ${
+                    currentPage === index ? "w-7 bg-[#2457e8]" : "w-1.5 bg-[#102c43]/20"
+                  }`} />
+                </button>
               ))}
+              <span className="sr-only">Page {currentPage + 1} of {pageCount}</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={next} aria-label="Next review">
-              <ChevronRight className="h-5 w-5 text-white" />
-            </Button>
-          </div>
+          )}
         </div>
-
-        {/* Accessible list fallback */}
-        <ul className="sr-only">
-          {testimonials.map((item) => (
-            <li key={item.id}>
-              {item.name}: {item.message}
-            </li>
-          ))}
-        </ul>
       </div>
     </section>
   );

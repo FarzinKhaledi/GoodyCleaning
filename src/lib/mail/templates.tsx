@@ -7,7 +7,6 @@ import {
   Hr,
   Html,
   Preview,
-  Section,
   Text,
 } from "@react-email/components";
 import { siteConfig } from "../config";

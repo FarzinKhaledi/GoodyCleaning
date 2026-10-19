@@ -9,7 +9,7 @@ import { SERVICE_LABELS, PROPERTY_SIZE_LABELS } from "@/lib/pricing";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     const parsed = bookingSchema.safeParse(body);
 
     if (!parsed.success) {

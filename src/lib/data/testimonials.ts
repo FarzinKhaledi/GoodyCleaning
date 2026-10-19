@@ -60,8 +60,20 @@ const FALLBACK_TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-export async function getTestimonials(): Promise<Testimonial[]> {
-  if (!db) return FALLBACK_TESTIMONIALS;
+// The seed script inserts these same examples into the database.
+const exampleReviewKeys = new Set(
+  FALLBACK_TESTIMONIALS.map((review) => `${review.name}\0${review.message}`),
+);
+
+export interface TestimonialContent {
+  testimonials: Testimonial[];
+  isExample: boolean;
+}
+
+export async function getTestimonialContent(): Promise<TestimonialContent> {
+  if (!db) {
+    return { testimonials: FALLBACK_TESTIMONIALS, isExample: true };
+  }
 
   try {
     const results = await db
@@ -69,8 +81,19 @@ export async function getTestimonials(): Promise<Testimonial[]> {
       .from(testimonials)
       .where(eq(testimonials.published, true));
 
-    return results.length > 0 ? results : FALLBACK_TESTIMONIALS;
+    const customerReviews = results.filter(
+      (review) => !exampleReviewKeys.has(`${review.name}\0${review.message}`),
+    );
+
+    return customerReviews.length > 0
+      ? { testimonials: customerReviews, isExample: false }
+      : { testimonials: FALLBACK_TESTIMONIALS, isExample: true };
   } catch {
-    return FALLBACK_TESTIMONIALS;
+    return { testimonials: FALLBACK_TESTIMONIALS, isExample: true };
   }
+}
+
+export async function getTestimonials(): Promise<Testimonial[]> {
+  const content = await getTestimonialContent();
+  return content.testimonials;
 }

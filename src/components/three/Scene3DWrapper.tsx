@@ -1,12 +1,28 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 
 const Scene3D = dynamic(() => import("./Scene3D").then((m) => m.Scene3D), {
   ssr: false,
   loading: () => <SceneFallback />,
 });
+
+const sceneMediaQuery = "(min-width: 768px) and (prefers-reduced-motion: no-preference)";
+
+function subscribeToScenePreference(onChange: () => void) {
+  const preference = window.matchMedia(sceneMediaQuery);
+  preference.addEventListener("change", onChange);
+  return () => preference.removeEventListener("change", onChange);
+}
+
+function getScenePreference() {
+  return window.matchMedia(sceneMediaQuery).matches;
+}
+
+function getServerScenePreference() {
+  return false;
+}
 
 function SceneFallback() {
   return (
@@ -17,15 +33,11 @@ function SceneFallback() {
 }
 
 export function Scene3DWrapper() {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    const isMobile = window.innerWidth < 768;
-    setEnabled(!prefersReducedMotion && !isMobile);
-  }, []);
+  const enabled = useSyncExternalStore(
+    subscribeToScenePreference,
+    getScenePreference,
+    getServerScenePreference
+  );
 
   if (!enabled) {
     return <SceneFallback />;

@@ -1,12 +1,23 @@
 export const siteConfig = {
-  name: "Goodycleaning",
+  name: "GoodyCleaning",
+  logo: "/GoodyCleaning-logo.webp",
   tagline: "Cleaner homes. Happier lives.",
   description:
     "Professional cleaning services across the UK — deep cleaning, end of tenancy, and carpet cleaning with eco-friendly products.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://goodycleaning.co.uk").replace(/\/+$/, ""),
+  goodyVan: {
+    name: "GoodyVan",
+    url: "https://goodyvan.co.uk/?utm_source=goodycleaning&utm_medium=referral&utm_campaign=moving_services",
+    cleaningPage: "https://goodyvan.co.uk/services/cleaning",
+  },
+  booking: {
+    instantEnabled: process.env.NEXT_PUBLIC_INSTANT_BOOKING_ENABLED === "true",
+  },
   contact: {
-    phone: "+44 20 7946 0958",
-    email: "hello@goodycleaning.co.uk",
+    phone: "0800 001 6171",
+    mobile: "07771 114041",
+    mobileE164: "+447771114041",
+    email: "support@goodyvan.com",
     address: "London, United Kingdom",
   },
   social: {

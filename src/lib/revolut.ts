@@ -34,6 +34,9 @@ export async function createRevolutOrder(
   params: CreateOrderParams
 ): Promise<RevolutOrder> {
   if (!REVOLUT_SECRET_KEY) {
+    if (process.env.NODE_ENV !== "development") {
+      throw new Error("Revolut payments are not configured");
+    }
     // Dev fallback when Revolut is not configured
     const mockId = `mock_${params.quoteId}_${Date.now()}`;
     return {
@@ -88,16 +91,16 @@ export function verifyRevolutWebhookSignature(
 ): boolean {
   const secret = process.env.REVOLUT_WEBHOOK_SECRET;
 
-  if (!secret) {
-    return process.env.NODE_ENV === "development";
-  }
+  if (!secret) return false;
 
   if (!signatureHeader || !timestampHeader) return false;
 
-  // Revolut sends `Revolut-Signature: v1={hex}` and signs `v1.{timestamp}.{body}`
-  const providedHash = signatureHeader.startsWith("v1=")
-    ? signatureHeader.slice(3)
-    : signatureHeader;
+  // Reject stale deliveries and replays. Revolut timestamps are milliseconds.
+  if (!/^\d+$/.test(timestampHeader)) return false;
+  const timestamp = Number(timestampHeader);
+  if (!Number.isSafeInteger(timestamp) || Math.abs(Date.now() - timestamp) > 5 * 60 * 1000) {
+    return false;
+  }
 
   const payloadToSign = `v1.${timestampHeader}.${payload}`;
   const expected = crypto
@@ -105,12 +108,10 @@ export function verifyRevolutWebhookSignature(
     .update(payloadToSign)
     .digest("hex");
 
-  try {
-    const a = Buffer.from(providedHash, "hex");
-    const b = Buffer.from(expected, "hex");
-    if (a.length !== b.length) return false;
-    return crypto.timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
+  // During signing-secret rotation Revolut may supply multiple v1 signatures.
+  return signatureHeader.split(",").some((signature) => {
+    const match = /^v1=([a-f\d]{64})$/i.exec(signature.trim());
+    if (!match) return false;
+    return crypto.timingSafeEqual(Buffer.from(match[1], "hex"), Buffer.from(expected, "hex"));
+  });
 }

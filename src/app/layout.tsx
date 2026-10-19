@@ -31,6 +31,17 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     locale: "en_GB",
     type: "website",
+    images: [{ url: siteConfig.logo, alt: siteConfig.name }],
+  },
+  icons: {
+    icon: siteConfig.logo,
+    apple: siteConfig.logo,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteConfig.name} | Less cleaning. More living.`,
+    description: siteConfig.description,
+    images: [siteConfig.logo],
   },
   robots: {
     index: true,

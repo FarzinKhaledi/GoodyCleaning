@@ -1,52 +1,44 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { siteConfig } from "@/lib/config";
-import { SmoothScroll } from "@/components/providers/SmoothScroll";
-import { Scene3DWrapper } from "@/components/three/Scene3DWrapper";
+import { PageMotion } from "@/components/providers/PageMotion";
+import { Header } from "@/components/sections/Header";
 import { Hero } from "@/components/sections/Hero";
 import { Services } from "@/components/sections/Services";
 import { WhyUs } from "@/components/sections/WhyUs";
+import { HowItWorks } from "@/components/sections/HowItWorks";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { BookingForm } from "@/components/sections/BookingForm";
+import { FAQ } from "@/components/sections/FAQ";
 import { Footer } from "@/components/sections/Footer";
 import { Toaster } from "@/components/ui/use-toast";
-import { getTestimonials } from "@/lib/data/testimonials";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+import { getTestimonialContent } from "@/lib/data/testimonials";
 
 export const metadata: Metadata = {
-  title: {
-    default: `${siteConfig.name} | Professional Cleaning Services`,
-    template: `%s | ${siteConfig.name}`,
-  },
+  title: { absolute: `${siteConfig.name} | Less cleaning. More living.` },
   description: siteConfig.description,
-  openGraph: {
-    title: siteConfig.name,
-    description: siteConfig.description,
-    url: siteConfig.url,
-    siteName: siteConfig.name,
-    type: "website",
-  },
+  alternates: { canonical: siteConfig.url },
 };
 
 export default async function HomePage() {
-  const testimonials = await getTestimonials();
+  const { testimonials, isExample } = await getTestimonialContent();
 
   return (
-    <SmoothScroll>
-      <Scene3DWrapper />
-      <main className="relative">
-        <Hero />
-        <Services />
-        <WhyUs />
-        <Testimonials testimonials={testimonials} />
-        <BookingForm />
+    <div className="marketing-page">
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <Header />
+      <PageMotion>
+        <main id="main-content" tabIndex={-1}>
+          <Hero />
+          <Services />
+          <HowItWorks />
+          <WhyUs />
+          <Testimonials testimonials={testimonials} isExample={isExample} />
+          <BookingForm />
+          <FAQ />
+        </main>
         <Footer />
-      </main>
+      </PageMotion>
       <Toaster />
-    </SmoothScroll>
+    </div>
   );
 }

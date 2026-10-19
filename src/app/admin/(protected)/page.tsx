@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { requireDb } from "@/lib/db";
-import { quotes, bookings } from "@/lib/db/schema";
-import { formatPrice, formatDate } from "@/lib/utils";
+import { quotes } from "@/lib/db/schema";
+import { formatDate } from "@/lib/utils";
 import { SERVICE_LABELS, PROPERTY_SIZE_LABELS } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/BrandLogo";
 import { signOut } from "@/auth";
 
 const FALLBACK_QUOTES: never[] = [];
@@ -40,7 +41,12 @@ export default async function AdminDashboard() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b bg-white px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <h1 className="text-xl font-bold text-navy">Goodycleaning Admin</h1>
+          <BrandLogo
+            href="/admin"
+            contained
+            width={150}
+            height={62}
+          />
           <div className="flex items-center gap-4">
             <Link href="/admin/bookings">
               <Button variant="outline" size="sm">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandLogo } from "@/components/BrandLogo";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { Loader2, ArrowLeft } from "lucide-react";
 import type { Quote } from "@/lib/db/schema";
@@ -59,7 +60,8 @@ export function QuoteDetailClient({
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-navy">Quote Details</h1>
+          <BrandLogo href="/admin" contained width={130} height={54} />
+          <h1 className="text-lg font-semibold text-navy">Quote Details</h1>
         </div>
       </header>
 

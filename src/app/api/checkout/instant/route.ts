@@ -5,10 +5,11 @@ import { quotes } from "@/lib/db/schema";
 import { bookingSchema } from "@/lib/validations";
 import { getPrice, isBigJob, SERVICE_LABELS, PROPERTY_SIZE_LABELS } from "@/lib/pricing";
 import { createRevolutOrder } from "@/lib/revolut";
+import { siteConfig } from "@/lib/config";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     const parsed = bookingSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -19,6 +20,13 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
+
+    if (!siteConfig.booking.instantEnabled) {
+      return NextResponse.json(
+        { error: "Please contact our cleaning team for a personalised quote." },
+        { status: 409 }
+      );
+    }
 
     if (isBigJob(data.propertySize)) {
       return NextResponse.json(

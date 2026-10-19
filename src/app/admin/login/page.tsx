@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Loader2 } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -36,11 +37,12 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-navy px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-navy px-4">
+      <BrandLogo width={240} height={100} className="mb-8" />
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">
-            Goodycleaning Admin
+          <CardTitle className="text-center text-xl text-navy">
+            Admin Sign In
           </CardTitle>
         </CardHeader>
         <CardContent>

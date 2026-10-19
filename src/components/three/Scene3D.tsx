@@ -1,25 +1,29 @@
 "use client";
 
 import { useRef, useMemo } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { ScrollControls, useScroll, Float, Stars, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { BenefitIcons } from "./scenes/BenefitIcons";
 import { TestimonialCards } from "./scenes/TestimonialCards";
 
+function createParticlePositions(count: number) {
+  const positions = new Float32Array(count * 3);
+  let seed = 0x6d2b79f5;
+
+  for (let index = 0; index < positions.length; index++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    positions[index] = (seed / 4294967296 - 0.5) * 20;
+  }
+
+  return positions;
+}
+
 function Particles({ count = 800, color = "#7EE1BF" }) {
   const ref = useRef<THREE.Points>(null);
   const scroll = useScroll();
 
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 20;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 20;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 20;
-    }
-    return pos;
-  }, [count]);
+  const positions = useMemo(() => createParticlePositions(count), [count]);
 
   useFrame((state) => {
     if (!ref.current) return;
@@ -120,9 +124,8 @@ function CleaningTools() {
 
 function CameraRig() {
   const scroll = useScroll();
-  const { camera } = useThree();
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const offset = scroll.offset;
     camera.position.x = Math.sin(offset * Math.PI * 2) * 3;
     camera.position.y = 2 + Math.sin(offset * Math.PI) * 1.5;

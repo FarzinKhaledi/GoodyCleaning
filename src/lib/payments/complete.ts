@@ -9,32 +9,53 @@ import {
 import { SERVICE_LABELS, PROPERTY_SIZE_LABELS } from "@/lib/pricing";
 import { formatDate } from "@/lib/utils";
 
-export async function completePayment(quoteId: string) {
+// Call only after verifying an ORDER_COMPLETED webhook. Never trust a browser redirect.
+export async function completePayment(revolutOrderId: string) {
   const db = requireDb();
 
-  const [quote] = await db
-    .select()
-    .from(quotes)
-    .where(eq(quotes.id, quoteId))
-    .limit(1);
+  const payment = await db.transaction(async (tx) => {
+    // Serialize duplicate deliveries and commit the booking with the paid status.
+    const [quote] = await tx
+      .select()
+      .from(quotes)
+      .where(eq(quotes.revolutOrderId, revolutOrderId))
+      .limit(1)
+      .for("update");
 
-  if (!quote || quote.status === "paid") return quote;
+    if (
+      !quote ||
+      (quote.status !== "quoted" && quote.status !== "paid") ||
+      !quote.priceCents ||
+      quote.priceCents < 100
+    ) return null;
 
-  const amountCents = quote.priceCents ?? 0;
+    const [existingBooking] = await tx
+      .select()
+      .from(bookings)
+      .where(eq(bookings.quoteId, quote.id))
+      .limit(1);
 
-  await db
-    .update(quotes)
-    .set({ status: "paid", updatedAt: new Date() })
-    .where(eq(quotes.id, quoteId));
+    const booking = existingBooking ?? (await tx.insert(bookings).values({
+      quoteId: quote.id,
+      amountCents: quote.priceCents,
+      paidAt: new Date(),
+      revolutOrderId,
+    }).returning())[0];
 
-  await db.insert(bookings).values({
-    quoteId,
-    amountCents,
-    paidAt: new Date(),
-    revolutOrderId: quote.revolutOrderId ?? `mock_${quoteId}`,
-    confirmationSentAt: new Date(),
+    await tx
+      .update(quotes)
+      .set({ status: "paid", updatedAt: new Date() })
+      .where(eq(quotes.id, quote.id));
+
+    return { quote, booking };
   });
 
+  if (!payment) return null;
+  const { quote, booking } = payment;
+  if (booking.confirmationSentAt) return { ...quote, status: "paid" as const };
+
+  const quoteId = quote.id;
+  const amountCents = booking.amountCents;
   const serviceLabel =
     SERVICE_LABELS[quote.serviceType as keyof typeof SERVICE_LABELS] ??
     quote.serviceType;
@@ -45,6 +66,7 @@ export async function completePayment(quoteId: string) {
 
   await sendEmail({
     to: quote.email,
+    idempotencyKey: `booking-confirmation/${booking.id}`,
     subject: "Booking Confirmed - Goodycleaning",
     react: BookingConfirmationEmail({
       name: quote.name,
@@ -59,6 +81,7 @@ export async function completePayment(quoteId: string) {
 
   await sendEmail({
     to: adminEmail,
+    idempotencyKey: `payment-alert/${booking.id}`,
     subject: `Payment Received - ${quote.name}`,
     react: InternalPaymentAlertEmail({
       customerName: quote.name,
@@ -69,5 +92,10 @@ export async function completePayment(quoteId: string) {
     }),
   });
 
-  return quote;
+  await db
+    .update(bookings)
+    .set({ confirmationSentAt: new Date() })
+    .where(eq(bookings.id, booking.id));
+
+  return { ...quote, status: "paid" as const };
 }
