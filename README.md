@@ -1,6 +1,6 @@
 # GoodyCleaning
 
-GoodyCleaning is a standalone Next.js application for carpet cleaning, deep cleaning, and before/after tenancy cleaning. Its homepage includes a service and property selector, responsive service cards, enquiry actions, FAQs, customer stories, and animations that respect reduced-motion preferences.
+GoodyCleaning is a standalone Next.js application for carpet cleaning, deep cleaning, and end of tenancy cleaning. Its homepage includes a service and property selector, responsive service cards, enquiry actions, FAQs, customer stories, and animations that respect reduced-motion preferences.
 
 The default is **enquiry mode**. The form requires a name, valid email address, and phone number. Every accepted enquiry is saved in the dedicated GoodyCleaning database before notification emails are attempted. Admins review the enquiry, set prices manually, and send an itemised quote with a secure Revolut payment link. The public site displays no automatic tariff. The legacy instant-booking form stays hidden unless `NEXT_PUBLIC_INSTANT_BOOKING_ENABLED=true` is set before building.
 

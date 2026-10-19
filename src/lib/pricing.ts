@@ -10,7 +10,7 @@ export type PropertySize =
 export const SERVICE_LABELS: Record<ServiceType, string> = {
   carpet: "Carpet Cleaning",
   deep: "Deep Cleaning",
-  tenancy: "Before & After Tenancy Cleaning",
+  tenancy: "End Of Tenancy Cleaning",
 };
 
 export const PROPERTY_SIZE_LABELS: Record<PropertySize, string> = {
