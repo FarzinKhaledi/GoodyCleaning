@@ -75,6 +75,12 @@ Configure private production values in the hosting project, separately from deve
 
 ## Database and admin setup
 
+Google sign-in uses `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` from an OAuth web client. Add `https://goodycleaning.co.uk/api/auth/callback/google` to that client's authorised redirect URIs in Google Cloud, preserving all existing website and mail callbacks. For local development, register `http://localhost:3000/api/auth/callback/google`. Only basic identity scopes are requested; mail credentials and sending permissions stay separate.
+
+Run `npm run admin:google -- --email <approved-email>` only for an explicitly authorised super admin. This applies the additive `drizzle/0002_google_admin.sql` migration and provisions that account as `SUPER_ADMIN` without creating a password or changing existing passwords and Google identity bindings. Existing password admins retain the `ADMIN` role. The command needs the intended database's private connection string and is not exposed on the website.
+
+Google sign-in accepts only an active admin already provisioned in the database with a verified Google email. The first successful sign-in binds Google's stable account identifier. Later sign-ins must match that identifier. Sessions recheck the account's current status and role, so removed or disabled admins lose access without waiting for cookie expiry. The public login page provides no registration or role-selection option.
+
 Point `DATABASE_URL` to the intended GoodyCleaning database before running database commands. Schema and account setup write to that database; review the target before using them in production.
 
 For a new development database:

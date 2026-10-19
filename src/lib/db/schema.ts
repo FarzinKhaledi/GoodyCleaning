@@ -59,7 +59,10 @@ export const bookings = pgTable("bookings", {
 export const admins = pgTable("admins", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
+  role: text("role").$type<"ADMIN" | "SUPER_ADMIN">().default("ADMIN").notNull(),
+  googleSubject: text("google_subject").unique(),
+  isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
