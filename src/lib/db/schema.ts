@@ -7,8 +7,10 @@ import {
   pgEnum,
   uuid,
   jsonb,
+  check,
 } from "drizzle-orm/pg-core";
-import type { QuoteLineItem } from "@/lib/quotes/pricing";
+import { sql } from "drizzle-orm";
+import type { QuoteDiscountType, QuoteLineItem } from "@/lib/quotes/pricing";
 
 export const quoteStatusEnum = pgEnum("quote_status", [
   "pending",
@@ -33,6 +35,8 @@ export const quotes = pgTable("quotes", {
   checkoutUrl: text("checkout_url"),
   lineItems: jsonb("line_items").$type<QuoteLineItem[]>().default([]).notNull(),
   discountCents: integer("discount_cents").default(0).notNull(),
+  discountType: text("discount_type").$type<QuoteDiscountType>().default("fixed").notNull(),
+  discountBasisPoints: integer("discount_basis_points"),
   customerNotes: text("customer_notes"),
   internalNotes: text("internal_notes"),
   version: integer("version").default(0).notNull(),
@@ -40,7 +44,9 @@ export const quotes = pgTable("quotes", {
   sendStartedAt: timestamp("send_started_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  check("quotes_discount_metadata_check", sql`(${table.discountType} = 'fixed' AND ${table.discountBasisPoints} IS NULL) OR (${table.discountType} = 'percentage' AND ${table.discountBasisPoints} IS NOT NULL AND ${table.discountBasisPoints} BETWEEN 0 AND 10000)`),
+]);
 
 export const bookings = pgTable("bookings", {
   id: uuid("id").defaultRandom().primaryKey(),
