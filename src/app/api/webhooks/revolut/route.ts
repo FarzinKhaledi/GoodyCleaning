@@ -12,20 +12,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const event = JSON.parse(payload);
+    let event;
+    try {
+      event = JSON.parse(payload);
+    } catch {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
 
-    if (event.event !== "ORDER_COMPLETED" && event.state !== "COMPLETED") {
+    if (!event || typeof event !== "object" || Array.isArray(event)) {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    if (event.event !== "ORDER_COMPLETED") {
       return NextResponse.json({ received: true });
     }
 
-    const quoteId =
-      event.merchant_order_ext_ref ?? event.data?.merchant_order_ext_ref;
-
-    if (!quoteId) {
-      return NextResponse.json({ received: true });
+    if (typeof event.order_id !== "string" || !event.order_id) {
+      return NextResponse.json({ error: "Missing order ID" }, { status: 400 });
     }
 
-    await completePayment(quoteId);
+    await completePayment(event.order_id);
 
     return NextResponse.json({ received: true });
   } catch (error) {

@@ -8,6 +8,7 @@ import { createRevolutOrder } from "@/lib/revolut";
 import { sendEmail } from "@/lib/mail/resend";
 import { QuoteReadyEmail } from "@/lib/mail/templates";
 import { SERVICE_LABELS } from "@/lib/pricing";
+import { z } from "zod";
 
 export async function POST(
   request: Request,
@@ -20,7 +21,11 @@ export async function POST(
     }
 
     const { id } = await params;
-    const body = await request.json();
+    if (!z.uuid().safeParse(id).success) {
+      return NextResponse.json({ error: "Invalid quote ID" }, { status: 400 });
+    }
+
+    const body = await request.json().catch(() => null);
     const parsed = quotePriceSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -39,6 +44,13 @@ export async function POST(
 
     if (!quote) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+    }
+
+    if (quote.status === "paid" || quote.status === "cancelled") {
+      return NextResponse.json(
+        { error: "A paid or cancelled booking cannot be quoted again" },
+        { status: 409 }
+      );
     }
 
     const serviceLabel =

@@ -5,9 +5,10 @@ import { bookings, quotes } from "@/lib/db/schema";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { SERVICE_LABELS } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default async function BookingsPage() {
-  let paidBookings: Array<{
+  const paidBookings: Array<{
     booking: typeof bookings.$inferSelect;
     quote: typeof quotes.$inferSelect;
   }> = [];
@@ -37,7 +38,15 @@ export default async function BookingsPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b bg-white px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <h1 className="text-xl font-bold text-navy">Paid Bookings</h1>
+          <div className="flex items-center gap-4">
+            <BrandLogo
+              href="/admin"
+              contained
+              width={140}
+              height={58}
+            />
+            <h1 className="text-lg font-semibold text-navy">Paid Bookings</h1>
+          </div>
           <Link href="/admin">
             <Button variant="outline" size="sm">
               Back to Dashboard
