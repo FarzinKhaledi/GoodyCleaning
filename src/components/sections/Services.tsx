@@ -8,7 +8,7 @@ import { siteConfig } from "@/lib/config";
 
 const services = [
   { id: "deep" as ServiceType, title: "Deep cleaning", description: "A proper reset for your space. From busy kitchens to those forgotten corners, we get into the details.", image: "/images/kitchen.jpg", alt: "Spotless bright kitchen with white counters and cabinets", icon: Sparkles, tags: ["Kitchen & bathrooms", "Every little detail"], badge: "THE FULL REFRESH" },
-  { id: "tenancy" as ServiceType, title: "End of tenancy", description: "Moving on or settling in? Leave the cleaning to us and start your next chapter with a fresh slate.", image: "/images/fresh-home.jpg", alt: "Fresh modern home with light blue sofas and timber flooring", icon: Home, tags: ["Moving in or out", "Top-to-bottom care"], badge: "NEW CHAPTER ENERGY" },
+  { id: "tenancy" as ServiceType, title: "End Of Tenancy Cleaning", description: "Moving on or settling in? Leave the cleaning to us and start your next chapter with a fresh slate.", image: "/images/fresh-home.jpg", alt: "Fresh modern home with light blue sofas and timber flooring", icon: Home, tags: ["Moving in or out", "Top-to-bottom care"], badge: "NEW CHAPTER ENERGY" },
   { id: "carpet" as ServiceType, title: "Carpet cleaning", description: "Bring the soft back underfoot. A deeper clean to lift dirt, treat stains, and refresh your favourite rooms.", image: "/images/living-room.jpg", alt: "Soft light-coloured rug in a sunlit living room", icon: Layers, tags: ["Deep-set dirt", "Fresh-feeling fibres"], badge: "SOFT. FRESH. LOVELY." },
 ];
 

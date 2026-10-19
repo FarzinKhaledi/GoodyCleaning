@@ -5,7 +5,7 @@ const instantQuestions = [
   {
     question: "Which clean is right for me?",
     answer:
-      "Choose carpet cleaning to refresh fibres and treat stains, deep cleaning for a thorough top-to-bottom clean, or before and after tenancy cleaning when moving in or out. Select a service in the booking form to see the price for your property.",
+      "Choose carpet cleaning to refresh fibres and treat stains, deep cleaning for a thorough top-to-bottom clean, or end of tenancy cleaning when moving in or out. Select a service in the booking form to see the price for your property.",
   },
   {
     question: "Can I see a price before I book?",
@@ -33,7 +33,7 @@ const enquiryQuestions = [
   {
     question: "Which clean is right for me?",
     answer:
-      "Choose carpet cleaning to refresh fibres and treat stains, deep cleaning for a thorough top-to-bottom clean, or before and after tenancy cleaning when moving in or out. Tell the team about your space and they can help you choose.",
+      "Choose carpet cleaning to refresh fibres and treat stains, deep cleaning for a thorough top-to-bottom clean, or end of tenancy cleaning when moving in or out. Tell the team about your space and they can help you choose.",
   },
   {
     question: "How do I get a quote?",
