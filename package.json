@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate-quotes": "tsx scripts/migrate-quote-workflow.ts",
+    "db:migrate-quote-discounts": "tsx scripts/migrate-quote-discounts.ts",
     "admin:google": "tsx scripts/setup-google-admin.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",

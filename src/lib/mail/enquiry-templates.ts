@@ -97,6 +97,13 @@ export function layout({ preview, eyebrow, heading, content, footer }: {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
   <title>${escapeHtml(heading)} | GoodyCleaning</title>
+  <style>
+    @media only screen and (max-width:480px) {
+      .email-heading { font-size:27px !important;line-height:33px !important; }
+      .email-main { padding-left:18px !important;padding-right:18px !important; }
+      .email-quote-hero { padding:22px 18px !important; }
+    }
+  </style>
 </head>
 <body style="margin:0;padding:0;width:100%;background-color:${colours.offwhite};font-family:${font};-webkit-text-size-adjust:100%;">
   <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;mso-hide:all;">${escapeHtml(preview)}</div>
@@ -110,11 +117,11 @@ export function layout({ preview, eyebrow, heading, content, footer }: {
           <p style="margin:6px 0 0;font-family:${font};font-size:18px;line-height:24px;font-weight:700;letter-spacing:-0.5px;color:${colours.navy};">GoodyCleaning</p>
           <p style="margin:3px 0 0;font-family:${font};font-size:11px;line-height:18px;color:${colours.muted};">Cleaner homes. Happier lives.</p>
         </td></tr>
-        <tr><td style="padding:30px 28px 10px;">
+        <tr><td class="email-main" style="padding:30px 28px 10px;">
           <p style="margin:0 0 12px;font-family:${font};font-size:10px;line-height:16px;font-weight:700;letter-spacing:1.8px;color:${colours.blue};text-transform:uppercase;">${escapeHtml(eyebrow)}</p>
-          <h1 style="margin:0;font-family:${font};font-size:30px;line-height:36px;font-weight:700;letter-spacing:-1px;color:${colours.navy};">${escapeHtml(heading)}</h1>
+          <h1 class="email-heading" style="margin:0;font-family:${font};font-size:30px;line-height:36px;font-weight:700;letter-spacing:-1px;color:${colours.navy};">${escapeHtml(heading)}</h1>
         </td></tr>
-        <tr><td style="padding:10px 28px 32px;">${content}</td></tr>
+        <tr><td class="email-main" style="padding:10px 28px 32px;">${content}</td></tr>
         <tr><td bgcolor="${colours.navy}" style="padding:24px 28px;background-color:${colours.navy};border-radius:0 0 21px 21px;">
           <p style="margin:0 0 10px;font-family:${font};font-size:14px;line-height:21px;font-weight:700;color:${colours.lime};">More living. Less cleaning.</p>
           <p style="margin:0;font-family:${font};font-size:12px;line-height:22px;color:#e0e8ef;"><a href="mailto:${escapeHtml(supportEmail)}" style="color:#ffffff;text-decoration:underline;">${escapeHtml(supportEmail)}</a><br /><a href="${escapeHtml(supportPhoneHref)}" style="color:#ffffff;text-decoration:none;">${escapeHtml(supportPhone)}</a></p>

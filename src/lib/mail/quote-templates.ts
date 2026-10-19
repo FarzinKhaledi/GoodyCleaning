@@ -24,6 +24,9 @@ export interface QuoteEmailDetails {
   preferredDate?: string;
   items: QuoteEmailItem[];
   discountCents: number;
+  discountType?: "fixed" | "percentage";
+  /** The saved percentage in hundredths of one percent (1000 = 10%). */
+  discountBasisPoints?: number | null;
   totalCents: number;
   customerNotes?: string;
 }
@@ -62,7 +65,22 @@ function assertAmounts(quote: QuoteEmailDetails) {
     !Number.isSafeInteger(quote.totalCents) || quote.totalCents !== subtotal - quote.discountCents) {
     throw new Error("Invalid quote amounts");
   }
+  if (quote.discountType === "percentage" &&
+    (!Number.isInteger(quote.discountBasisPoints) || quote.discountBasisPoints! < 0 || quote.discountBasisPoints! > 10_000 ||
+      Math.round(subtotal * quote.discountBasisPoints! / 10_000) !== quote.discountCents)) {
+    throw new Error("Invalid quote percentage");
+  }
   return subtotal;
+}
+
+function discountLabel(quote: QuoteEmailDetails) {
+  if (quote.discountType !== "percentage") return "Discount";
+  const basisPoints = quote.discountBasisPoints;
+  if (!Number.isInteger(basisPoints) || basisPoints! < 0 || basisPoints! > 10_000) {
+    throw new Error("Invalid quote percentage");
+  }
+  const percent = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(basisPoints! / 100);
+  return `Discount (${percent}%)`;
 }
 
 function checkoutLink(value: string) {
@@ -91,7 +109,7 @@ function itemTable(quote: QuoteEmailDetails, subtotal: number) {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;table-layout:fixed;font-family:${font};">
     <thead><tr><th align="left" width="74%" style="padding:13px 10px 13px 0;border-bottom:1px solid ${colours.border};font-size:12px;line-height:18px;color:${colours.muted};font-weight:600;">Cleaning details</th><th align="right" width="26%" style="padding:13px 0;border-bottom:1px solid ${colours.border};font-size:12px;line-height:18px;color:${colours.muted};font-weight:600;">Amount</th></tr></thead>
     <tbody>${quote.items.map((item) => `<tr><td valign="top" style="padding:14px 10px 14px 0;border-bottom:1px solid ${colours.border};font-size:14px;line-height:21px;color:${colours.navy};word-break:break-word;overflow-wrap:anywhere;">${escapeMultiline(item.description)}<br /><span style="font-size:12px;line-height:20px;color:${colours.muted};">${item.quantity} &times; ${money(item.unitPriceCents)}</span></td><td align="right" valign="top" style="padding:14px 0;border-bottom:1px solid ${colours.border};font-size:14px;line-height:21px;color:${colours.navy};font-weight:600;white-space:nowrap;">${money(item.quantity * item.unitPriceCents)}</td></tr>`).join("")}</tbody>
-    <tfoot>${quote.discountCents ? `<tr><td style="padding:14px 10px 5px 0;font-size:13px;line-height:20px;color:${colours.muted};">Subtotal</td><td align="right" style="padding:14px 0 5px;font-size:13px;line-height:20px;color:${colours.navy};white-space:nowrap;">${money(subtotal)}</td></tr><tr><td style="padding:5px 10px 12px 0;font-size:13px;line-height:20px;color:${colours.muted};">Discount</td><td align="right" style="padding:5px 0 12px;font-size:13px;line-height:20px;color:${colours.navy};white-space:nowrap;">&minus;${money(quote.discountCents)}</td></tr>` : ""}<tr><td style="padding:17px 10px 17px 0;font-size:16px;line-height:24px;font-weight:700;color:${colours.navy};">Total (GBP)</td><td align="right" style="padding:17px 0;font-size:23px;line-height:28px;font-weight:700;color:${colours.blue};white-space:nowrap;">${money(quote.totalCents)}</td></tr></tfoot>
+    <tfoot>${quote.discountCents ? `<tr><td style="padding:14px 10px 5px 0;font-size:13px;line-height:20px;color:${colours.muted};">Subtotal</td><td align="right" style="padding:14px 0 5px;font-size:13px;line-height:20px;color:${colours.navy};white-space:nowrap;">${money(subtotal)}</td></tr><tr><td style="padding:5px 10px 12px 0;font-size:13px;line-height:20px;color:#267338;">${escapeHtml(discountLabel(quote))}</td><td align="right" style="padding:5px 0 12px;font-size:13px;line-height:20px;color:#267338;font-weight:600;white-space:nowrap;">&minus;${money(quote.discountCents)}</td></tr>` : ""}<tr><td style="padding:17px 10px 17px 0;border-top:2px solid ${colours.navy};font-size:16px;line-height:24px;font-weight:700;color:${colours.navy};">Total (GBP)</td><td align="right" style="padding:17px 0;border-top:2px solid ${colours.navy};font-size:23px;line-height:28px;font-weight:700;color:${colours.blue};white-space:nowrap;">${money(quote.totalCents)}</td></tr></tfoot>
   </table>`;
 }
 
@@ -103,7 +121,7 @@ function notes(quote: QuoteEmailDetails) {
 function textBreakdown(quote: QuoteEmailDetails, subtotal: number) {
   return [
     ...quote.items.map((item) => `${singleLine(item.description)}: ${item.quantity} x ${money(item.unitPriceCents)} = ${money(item.quantity * item.unitPriceCents)}`),
-    ...(quote.discountCents ? [`Subtotal: ${money(subtotal)}`, `Discount: -${money(quote.discountCents)}`] : []),
+    ...(quote.discountCents ? [`Subtotal: ${money(subtotal)}`, `${discountLabel(quote)}: -${money(quote.discountCents)}`] : []),
     `Total (GBP): ${money(quote.totalCents)}`,
     ...(quote.customerNotes?.trim() ? ["", "Included in your quote:", quote.customerNotes.trim()] : []),
   ];
@@ -111,27 +129,54 @@ function textBreakdown(quote: QuoteEmailDetails, subtotal: number) {
 
 export function buildCustomerQuoteEmail(quote: QuoteEmailInput): EnquiryEmailContent {
   const subtotal = assertAmounts(quote);
+  // Validate percentage metadata even when a very small discount rounds to zero.
+  if (quote.discountType === "percentage") discountLabel(quote);
   const checkoutUrl = checkoutLink(quote.checkoutUrl);
   const rows = detailRows(quote);
   const subject = `Your GoodyCleaning quote · ${reference(quote)}`;
   const html = layout({
     preview: `Your tailored cleaning quote is ready. Total: ${money(quote.totalCents)}.`,
-    eyebrow: "Prepared for your space",
+    eyebrow: `Your tailored quote · ${reference(quote)}`,
     heading: "Your cleaning quote is ready.",
     content: `<p style="margin:0 0 14px;font-family:${font};font-size:16px;line-height:26px;font-weight:600;color:${colours.navy};">Hi ${escapeHtml(singleLine(quote.name))},</p>
       <p style="margin:0 0 24px;${paragraph}">Thank you for choosing GoodyCleaning. We&apos;ve reviewed your enquiry and prepared the quote below for your space.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${colours.navy}" style="width:100%;border-collapse:separate;background-color:${colours.navy};border-radius:16px;margin:0 0 26px;">
+        <tr><td class="email-quote-hero" style="padding:25px 24px;">
+          <p style="margin:0 0 9px;font-family:${font};font-size:11px;line-height:18px;font-weight:700;letter-spacing:1.2px;color:#c9d8e3;text-transform:uppercase;">Your quote total</p>
+          <p style="margin:0 0 8px;font-family:${font};font-size:42px;line-height:48px;font-weight:700;letter-spacing:-1.5px;color:#ffffff;">${money(quote.totalCents)}</p>
+          <p style="margin:0;font-family:${font};font-size:14px;line-height:22px;color:#e3ecf3;">${escapeHtml(SERVICE_LABELS[quote.serviceType])} &middot; ${escapeHtml(PROPERTY_SIZE_LABELS[quote.propertySize])}</p>
+          ${quote.discountCents ? `<p style="margin:17px 0 0;padding:12px 0 0;border-top:1px solid #345065;font-family:${font};font-size:13px;line-height:21px;color:${colours.lime};font-weight:600;">You save ${money(quote.discountCents)}${quote.discountType === "percentage" ? ` with your ${new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(quote.discountBasisPoints! / 100)}% discount` : " on this quote"}.</p>` : ""}
+        </td></tr>
+      </table>
+      <h2 style="margin:0 0 10px;font-family:${font};font-size:16px;line-height:24px;font-weight:700;color:${colours.navy};">Prepared for you</h2>
+      ${detailPanel([
+        { label: "Customer", value: singleLine(quote.name) },
+        { label: "Email", value: singleLine(quote.email) },
+        { label: "Phone", value: singleLine(quote.phone) },
+      ])}
+      <h2 style="margin:25px 0 10px;font-family:${font};font-size:16px;line-height:24px;font-weight:700;color:${colours.navy};">Your cleaning details</h2>
       ${detailPanel(rows)}
+      <h2 style="margin:25px 0 0;font-family:${font};font-size:16px;line-height:24px;font-weight:700;color:${colours.navy};">A clear breakdown</h2>
       ${itemTable(quote, subtotal)}
       ${notes(quote)}
-      <p style="margin:14px 0 18px;${paragraph}">Ready to go ahead? Use the secure Revolut payment link below to pay for this quote.</p>
-      ${button("Pay securely with Revolut", checkoutUrl)}
-      <p style="margin:16px 0 0;font-family:${font};font-size:12px;line-height:21px;color:${colours.muted};">${escapeHtml(dateNote)}</p>
-      <p style="margin:18px 0 0;${paragraph}font-size:14px;">Need to adjust anything? Reply to this email and we&apos;ll be happy to help.</p>`,
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${colours.offwhite}" style="width:100%;border-collapse:separate;background-color:${colours.offwhite};border:1px solid ${colours.border};border-radius:14px;margin:12px 0 24px;">
+        <tr><td style="padding:22px 20px;">
+          <h2 style="margin:0 0 9px;font-family:${font};font-size:17px;line-height:25px;font-weight:700;color:${colours.navy};">Ready for a fresher space?</h2>
+          <p style="margin:0 0 17px;${paragraph}font-size:14px;">Review your details, then pay ${money(quote.totalCents)} through our secure Revolut checkout.</p>
+          ${button("Pay securely with Revolut", checkoutUrl)}
+          <p style="margin:13px 0 0;font-family:${font};font-size:11px;line-height:18px;color:${colours.muted};">Secure payment &middot; Payment acknowledgement sent by email</p>
+        </td></tr>
+      </table>
+      <h2 style="margin:0 0 8px;font-family:${font};font-size:16px;line-height:24px;font-weight:700;color:${colours.navy};">What happens next?</h2>
+      <p style="margin:0 0 18px;${paragraph}font-size:14px;">Once payment is received, we&apos;ll send you an acknowledgement and contact you to agree your cleaning date and access arrangements.</p>
+      <p style="margin:0 0 18px;padding:13px 16px;border-left:3px solid ${colours.lime};background-color:${colours.offwhite};font-family:${font};font-size:12px;line-height:21px;color:${colours.muted};">${escapeHtml(dateNote)}</p>
+      <p style="margin:0;${paragraph}font-size:14px;">Need to adjust anything? Reply to this email or call <a href="tel:${supportPhone.replace(/\s/g, "")}" style="color:${colours.blue};text-decoration:underline;">${escapeHtml(supportPhone)}</a>. We&apos;ll be happy to help.</p>`,
     footer: "This quote was prepared by the GoodyCleaning team in response to your cleaning enquiry.",
   });
   const text = [
     "GOODYCLEANING", "Your cleaning quote is ready.", "", `Hi ${singleLine(quote.name)},`, "",
     "Thank you for choosing GoodyCleaning. We've reviewed your enquiry and prepared the quote below for your space.", "",
+    `Customer: ${singleLine(quote.name)}`, `Email: ${singleLine(quote.email)}`, `Phone: ${singleLine(quote.phone)}`, "",
     ...rows.map(({ label, value }) => `${label}: ${value}`), "", ...textBreakdown(quote, subtotal), "",
     "Pay securely with Revolut:", checkoutUrl, "", dateNote, "",
     `Need to adjust anything? Reply to this email or contact ${supportEmail}.`, `Call ${supportPhone}.`, "", "GoodyCleaning",

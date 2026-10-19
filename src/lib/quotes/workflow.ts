@@ -1,12 +1,11 @@
 import { eq } from "drizzle-orm";
-import { z } from "zod";
 import { requireDb } from "@/lib/db";
 import { quotes, type Quote } from "@/lib/db/schema";
 import { sendBrandedEmail } from "@/lib/mail/enquiry";
 import { buildCustomerQuoteEmail } from "@/lib/mail/quote-templates";
 import { SERVICE_LABELS, type ServiceType, type PropertySize } from "@/lib/pricing";
 import { createRevolutOrder, getRevolutOrder, cancelRevolutOrder, type RevolutOrder } from "@/lib/revolut";
-import { calculateQuoteTotal, quoteDraftSchema, type QuoteLineItem } from "./pricing";
+import { calculateQuotePricing, getQuoteDiscount, quoteDraftSchema, type QuoteDraftInput, type QuoteLineItem } from "./pricing";
 
 export class QuoteWorkflowError extends Error {
   constructor(public readonly status: number, message: string, public readonly quote?: Quote) {
@@ -65,15 +64,38 @@ function assertPendingOrder(order: RevolutOrder, amount: number) {
 
 export function createQuoteWorkflow(services: QuoteWorkflowDependencies) {
   return {
-    async save(id: string, input: z.infer<typeof quoteDraftSchema>) {
+    async save(id: string, input: QuoteDraftInput) {
       const draft = quoteDraftSchema.parse(input);
       return services.withLockedQuote(id, async (quote, update) => {
         assertEditable(quote, draft.version);
         if (quote.status !== "pending") throw new QuoteWorkflowError(409, "Reopen the quote to cancel its payment link before editing.");
+        const changes: Partial<Quote> = {};
+        for (const field of ["name", "email", "phone", "serviceType", "propertySize"] as const) {
+          const value = draft[field];
+          if (value !== undefined) changes[field] = value;
+        }
+        if (draft.postcode !== undefined) changes.postcode = draft.postcode || null;
+        if (draft.message !== undefined) changes.message = draft.message || null;
+        if (draft.preferredDate !== undefined) {
+          changes.preferredDate = draft.preferredDate ? new Date(`${draft.preferredDate}T12:00:00Z`) : null;
+        }
+        if (draft.customerNotes !== undefined) changes.customerNotes = draft.customerNotes || null;
+        if (draft.internalNotes !== undefined) changes.internalNotes = draft.internalNotes || null;
+        if ([draft.lineItems, draft.discountType, draft.discountCents, draft.discountBasisPoints].some((value) => value !== undefined)) {
+          const discountType = draft.discountType ?? (draft.discountCents !== undefined ? "fixed" : quote.discountType ?? "fixed");
+          const discount = getQuoteDiscount(discountType === "percentage"
+            ? { discountType, discountBasisPoints: draft.discountBasisPoints ?? quote.discountBasisPoints }
+            : { discountType, discountCents: draft.discountCents ?? (quote.discountType === "percentage" ? 0 : quote.discountCents) });
+          const lineItems = draft.lineItems ?? quote.lineItems;
+          let pricing: ReturnType<typeof calculateQuotePricing>;
+          try { pricing = calculateQuotePricing(lineItems, discount); }
+          catch { throw new QuoteWorkflowError(400, "Enter a valid discount and a quote total between £1 and £100,000."); }
+          Object.assign(changes, { lineItems, discountType,
+            discountBasisPoints: discount.discountType === "percentage" ? discount.discountBasisPoints : null,
+            discountCents: pricing.discountCents, priceCents: pricing.totalCents });
+        }
         return update({
-          lineItems: draft.lineItems, discountCents: draft.discountCents,
-          priceCents: calculateQuoteTotal(draft.lineItems, draft.discountCents),
-          customerNotes: draft.customerNotes || null, internalNotes: draft.internalNotes || null,
+          ...changes,
           sendStartedAt: null, version: quote.version + 1,
         });
       });
@@ -84,7 +106,12 @@ export function createQuoteWorkflow(services: QuoteWorkflowDependencies) {
         assertEditable(quote, version);
         const items = itemsFor(quote);
         let total: number;
-        try { total = calculateQuoteTotal(items, quote.discountCents); }
+        let discountCents: number;
+        try {
+          const pricing = calculateQuotePricing(items, getQuoteDiscount(quote));
+          total = pricing.totalCents;
+          discountCents = pricing.discountCents;
+        }
         catch { throw new QuoteWorkflowError(400, "Save a complete quote with a valid total before sending."); }
         let order: RevolutOrder;
         if (quote.revolutOrderId) {
@@ -100,7 +127,7 @@ export function createQuoteWorkflow(services: QuoteWorkflowDependencies) {
           assertPendingOrder(order, total);
         }
         // Save the order before sending. Email retries must reuse this exact link.
-        return update({ status: "quoted", priceCents: total, lineItems: items,
+        return update({ status: "quoted", priceCents: total, lineItems: items, discountCents,
           revolutOrderId: order.id, checkoutUrl: order.checkout_url, sendStartedAt: new Date() });
       });
 
@@ -113,6 +140,7 @@ export function createQuoteWorkflow(services: QuoteWorkflowDependencies) {
             postcode: prepared.postcode ?? undefined,
             preferredDate: prepared.preferredDate?.toISOString().slice(0, 10),
             items: prepared.lineItems, discountCents: prepared.discountCents,
+            discountType: prepared.discountType, discountBasisPoints: prepared.discountBasisPoints,
             totalCents: prepared.priceCents!, customerNotes: prepared.customerNotes ?? undefined,
             checkoutUrl: prepared.checkoutUrl!,
           }),

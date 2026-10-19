@@ -43,6 +43,8 @@ function paymentEmailInput(quote: Quote, amountCents: number, paidAt: Date | nul
     preferredDate: quote.preferredDate?.toISOString().slice(0, 10),
     items,
     discountCents: quote.lineItems?.length ? quote.discountCents : 0,
+    discountType: quote.lineItems?.length ? quote.discountType : "fixed",
+    discountBasisPoints: quote.lineItems?.length ? quote.discountBasisPoints : null,
     totalCents: amountCents,
     customerNotes: quote.customerNotes ?? undefined,
     paidAt: paidAt ?? undefined,

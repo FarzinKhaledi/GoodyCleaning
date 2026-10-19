@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     "/api/enquiries": ["./src/lib/mail/assets/goodycleaning-logo.png"],
     "/api/quotes/request": ["./src/lib/mail/assets/goodycleaning-logo.png"],
     "/api/admin/quotes/*/send": ["./src/lib/mail/assets/goodycleaning-logo.png"],
+    "/api/admin/quotes/*/preview": ["./src/lib/mail/assets/goodycleaning-logo.png"],
     "/api/admin/quotes/*/reopen": ["./src/lib/mail/assets/goodycleaning-logo.png"],
     "/api/webhooks/revolut": ["./src/lib/mail/assets/goodycleaning-logo.png"],
   },

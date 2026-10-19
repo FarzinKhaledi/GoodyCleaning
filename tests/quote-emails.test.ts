@@ -6,6 +6,7 @@ import {
   buildAdminPaymentEmail, buildCustomerPaymentAcknowledgementEmail, buildCustomerQuoteEmail,
   type QuoteEmailInput,
 } from "../src/lib/mail/quote-templates";
+import { buildCustomerQuotePreview, type SavedQuotePreview } from "../src/lib/mail/quote-preview";
 
 const quote: QuoteEmailInput = {
   id: "12345678-1234-1234-1234-123456789012",
@@ -54,6 +55,94 @@ test("quote email contains the exact itemised GBP total, discount, and secure pa
   assert.match(email.html, /token=example&amp;source=quote/);
   assert.ok(!email.text.includes("confirmed booking"));
   assert.match(email.text, /Payment does not confirm an unagreed date/);
+  for (const value of [quote.email, quote.phone, "What happens next?", "Your quote total", "You save £20.00"]) {
+    assert.ok(email.html.includes(value), value);
+  }
+});
+
+test("percentage discounts retain their saved percentage and exact penny saving in customer emails", () => {
+  const percentage = buildCustomerQuoteEmail({ ...quote, discountType: "percentage", discountBasisPoints: 1000 });
+  assert.match(percentage.html, /Discount \(10%\)/);
+  assert.match(percentage.text, /Discount \(10%\): -£20\.00/);
+  assert.match(percentage.html, /with your 10% discount/);
+  const fractional = buildCustomerQuoteEmail({
+    ...quote, discountType: "percentage", discountBasisPoints: 1250,
+    discountCents: 2500, totalCents: 17500,
+  });
+  assert.match(fractional.text, /Discount \(12\.5%\): -£25\.00/);
+  assert.ok(!buildCustomerQuoteEmail({ ...quote, discountType: "fixed" }).text.includes("(10%)"));
+  for (const discountBasisPoints of [undefined, null, -1, 10_001, 10.5, Number.NaN]) {
+    assert.throws(() => buildCustomerQuoteEmail({ ...quote, discountType: "percentage", discountBasisPoints }));
+  }
+  assert.throws(() => buildCustomerQuoteEmail({
+    ...quote, discountType: "percentage", discountBasisPoints: 1250,
+  }), "The advertised percentage must match the actual saving");
+});
+
+function savedQuote(changes: Partial<SavedQuotePreview> = {}): SavedQuotePreview {
+  return {
+    id: quote.id, name: quote.name, email: quote.email, phone: quote.phone,
+    serviceType: quote.serviceType, propertySize: quote.propertySize, postcode: quote.postcode!,
+    preferredDate: new Date("2099-01-01T00:00:00Z"), lineItems: quote.items,
+    discountCents: quote.discountCents, discountType: "percentage", discountBasisPoints: 1000,
+    priceCents: quote.totalCents, customerNotes: quote.customerNotes!,
+    checkoutUrl: quote.checkoutUrl, version: 4, ...changes,
+  };
+}
+
+test("email preview uses the sent template and inline logo while disabling every outgoing link", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => { throw new Error("A preview must not make a provider request"); });
+  const saved = savedQuote();
+  const preview = await buildCustomerQuotePreview(saved);
+  const sent = buildCustomerQuoteEmail({ ...quote, discountType: "percentage", discountBasisPoints: 1000 });
+  assert.equal(preview.subject, sent.subject);
+  assert.equal(preview.to, saved.email);
+  assert.equal(preview.from, "GoodyCleaning <support@goodyvan.com>");
+  assert.equal(preview.replyTo, "support@goodyvan.com");
+  assert.equal(preview.version, 4);
+  assert.match(preview.html, /src="data:image\/png;base64,iVBOR/);
+  assert.ok(!preview.html.includes("cid:goodycleaning-logo"));
+  assert.ok(!/\bhref=/i.test(preview.html), "Payment, mail and phone links must all be inert");
+  assert.ok(!preview.html.includes(quote.checkoutUrl));
+  assert.match(preview.html, /Content-Security-Policy/);
+  // Preview-only transformations must leave the actual customer content identical.
+  const normalise = (html: string) => html
+    .replace(/<meta http-equiv="Content-Security-Policy"[^>]+\/>/, "")
+    .replace(/src="(?:cid:goodycleaning-logo|data:image\/png;base64,[^"]+)"/, 'src="logo"')
+    .replace(/\bhref=("[^"]*"|'[^']*')/gi, 'aria-disabled="true" role="link" tabindex="-1"');
+  assert.equal(normalise(preview.html), normalise(sent.html));
+});
+
+test("draft preview reads saved customer details and never exposes internal notes or creates a payment link", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => { throw new Error("A draft preview must not contact Revolut or Gmail"); });
+  const saved = {
+    ...savedQuote({ name: "Updated Customer", email: "updated@example.com", phone: "020 7946 0123", checkoutUrl: null, version: 8 }),
+    internalNotes: "PRIVATE margin and staff instructions",
+    message: "PRIVATE original enquiry instructions",
+  };
+  const before = structuredClone(saved);
+  const preview = await buildCustomerQuotePreview(saved);
+  assert.equal(preview.to, "updated@example.com");
+  assert.equal(preview.version, 8);
+  for (const value of [saved.name, saved.email, saved.phone, "Discount (10%)", "£180.00"]) {
+    assert.ok(preview.html.includes(value), value);
+  }
+  assert.ok(!preview.html.includes("PRIVATE"));
+  assert.ok(!preview.html.includes("#email-preview"));
+  assert.ok(!/\bhref=/i.test(preview.html));
+  assert.deepEqual(saved, before, "Preview must not change saved values or payment state");
+  await assert.rejects(buildCustomerQuotePreview(savedQuote({ lineItems: [], priceCents: null })));
+});
+
+test("percentage preview derives the same current amount as Send rather than trusting stale monetary fields", async () => {
+  const preview = await buildCustomerQuotePreview(savedQuote({
+    lineItems: [{ description: "Deep cleaning", quantity: 1, unitPriceCents: 15000 }],
+    discountType: "percentage", discountBasisPoints: 1250,
+    discountCents: 1, priceCents: 14999,
+  }));
+  assert.match(preview.html, /£131\.25/);
+  assert.match(preview.html, /You save £18\.75 with your 12\.5% discount/);
+  assert.ok(!preview.html.includes("£149.99"));
 });
 
 test("quote emails escape admin-editable fields and reject unusable totals or payment URLs", () => {
